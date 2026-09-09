@@ -61,7 +61,7 @@ export interface ContextBreakdownProjection {
   systemTokens: number
   /** Heuristic tokens of the newest request envelope's tool schemas; 0 before any request. */
   toolsTokens: number
-  /** Heuristic tokens of every other visible surface node, including superseded system prompts. */
+  /** 其他可见历史节点与当前请求注入的估算 token，包含被替代但仍可见的系统提示。 */
   messageTokens: number
 }
 

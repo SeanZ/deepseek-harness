@@ -359,6 +359,9 @@ function validateConfiguredAgents(agents: Config['agents']): void {
 export class AgentLoop extends Service implements AgentFactory {
   static inject = ['agents', 'sessions', 'llm', 'tools', 'systemPrompt', 'sessionProjections']
 
+  /** 供持久请求注入插件检查的主机协议版本。 */
+  readonly requestInjectionsVersion: number = 2
+
   /** Runtime schema for declarative agents. */
   static Config = z.object({
     maxParallelToolCalls: z.number().step(1).min(1).default(DEFAULT_MAX_PARALLEL_TOOL_CALLS),

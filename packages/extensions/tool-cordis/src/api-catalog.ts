@@ -106,6 +106,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Concrete agent factory and driver service.',
     methods: [
       {
+        signature: 'readonly requestInjectionsVersion: number = 2',
+        description: '供持久请求注入插件检查的主机协议版本。',
+        parameters: [],
+      },
+      {
         signature: 'readonly config: ResolvedConfig',
         description: 'Validated configuration owned by the agent-loop service.',
         parameters: [],
@@ -3115,6 +3120,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'payload', description: '.signal - the turn abort signal. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
   },
   {
+    name: 'agent/request-injections',
+    mode: 'waterfall',
+    signature: '\'agent/request-injections\'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; signal: AbortSignal }, next: () => Promise<RequestMessageInjection[]>): Promise<RequestMessageInjection[]>',
+    summary: '贡献仅进入模型请求的 assistant 消息。调用 next() 获取后续声明， 返回完整数组；通常保留后续声明，再追加本插件的条目。 loop 在组装前校验并持久化完整快照，保证请求可从会话日志重建。',
+    description: '贡献仅进入模型请求的 assistant 消息。调用 next() 获取后续声明， 返回完整数组；通常保留后续声明，再追加本插件的条目。 loop 在组装前校验并持久化完整快照，保证请求可从会话日志重建。',
+    parameters: [{ name: 'payload', description: '.signal - 当前 turn 的取消信号。 Scope-filtered dispatch（按作用域分发）：局部监听器仅接收所属 agent 的事件。' }],
+  },
+  {
     name: 'agent/session-start',
     mode: 'emit',
     signature: '\'agent/session-start\'(this: Scoped<Agent>, payload: { agent: Agent; source: SessionStartSource }): void',
@@ -4915,6 +4928,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface RequestImageAttachment {\n    variantId: ImageVariantId;\n    attachment: ImageAttachmentRef;\n    data: Uint8Array;\n    mediaType: ImageMediaType;\n    bytes: number;\n    width: number;\n    height: number;\n    depth: \'uchar\';\n    space: \'srgb\';\n    hasAlpha: boolean;\n}',
   },
   {
+    name: 'RequestMessageInjection',
+    declaration: 'export interface RequestMessageInjection {\n    readonly key: string;\n    readonly role: \'assistant\';\n    readonly text: string;\n    readonly source: {\n        readonly kind: \'plugin\';\n        readonly plugin: string;\n    };\n    readonly placement: {\n        readonly kind: \'before-latest-user\';\n    } | {\n        readonly kind: \'depth\';\n        readonly depth: number;\n    };\n}',
+  },
+  {
     name: 'RequestRunOutcome',
     declaration: 'export type RequestRunOutcome = \'approved\' | \'completed\' | \'rejected\' | \'cancelled\' | \'failed\';',
   },
@@ -5104,7 +5121,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionEventMap',
-    declaration: 'export interface SessionEventMap {\n    \'turn/start\': {\n        turn: number;\n    };\n    \'turn/end\': {\n        turn: number;\n        reason: TurnEndReason;\n    };\n    \'step/start\': {\n        turn: number;\n        step: number;\n    };\n    \'step/end\': {\n        turn: number;\n        step: number;\n    };\n    \'user/message\': UserMessage;\n    \'system/message\': {\n        turn: number;\n        step: number;\n        message: SystemMessage;\n    };\n    \'assistant/message\': {\n        turn: number;\n        step: number;\n        message: AssistantMessage;\n        stream: AssistantStreamRecord[];\n        usage?: TokenUsage;\n        interrupted?: true;\n    };\n    \'assistant/attempt\': {\n        turn: number;\n        step: number;\n        stream: AssistantStreamRecord[];\n    };\n    \'tool/call\': {\n        turn: number;\n        step: number;\n        callId: ToolCallId;\n        name: string;\n        arguments: string;\n    };\n    \'tool/result\': {\n        turn: number;\n        step: number;\n        message: ToolResultMessage;\n        error?: {\n            name: string;\n            code: string;\n        };\n        meta?: JsonValue;\n    };\n    \'request/header\': {\n        header: EpochHeader;\n        reason: RequestHeaderReason;\n        startsSeries?: true;\n    };\n    \'request/context\': RequestContext;\n    \'session/end-seed\': {\n        inherited?: true;\n    };\n}',
+    declaration: 'export interface SessionEventMap {\n    \'turn/start\': {\n        turn: number;\n    };\n    \'turn/end\': {\n        turn: number;\n        reason: TurnEndReason;\n    };\n    \'step/start\': {\n        turn: number;\n        step: number;\n    };\n    \'step/end\': {\n        turn: number;\n        step: number;\n    };\n    \'user/message\': UserMessage;\n    \'system/message\': {\n        turn: number;\n        step: number;\n        message: SystemMessage;\n    };\n    \'assistant/message\': {\n        turn: number;\n        step: number;\n        message: AssistantMessage;\n        stream: AssistantStreamRecord[];\n        usage?: TokenUsage;\n        interrupted?: true;\n    };\n    \'assistant/attempt\': {\n        turn: number;\n        step: number;\n        stream: AssistantStreamRecord[];\n    };\n    \'tool/call\': {\n        turn: number;\n        step: number;\n        callId: ToolCallId;\n        name: string;\n        arguments: string;\n    };\n    \'tool/result\': {\n        turn: number;\n        step: number;\n        message: ToolResultMessage;\n        error?: {\n            name: string;\n            code: string;\n        };\n        meta?: JsonValue;\n    };\n    \'request/header\': {\n        header: EpochHeader;\n        reason: RequestHeaderReason;\n        startsSeries?: true;\n    };\n    \'request/context\': RequestContext;\n    \'request/injections\': {\n        injections: RequestMessageInjection[];\n    };\n    \'session/end-seed\': {\n        inherited?: true;\n    };\n}',
   },
   {
     name: 'SessionEventMetadataFilter',

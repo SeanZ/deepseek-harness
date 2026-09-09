@@ -10,7 +10,7 @@ import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type {
   LlmAttemptId, LlmCallConfig, LlmFailure, MessageId, ReasoningEffortId, ResolvedRetryPolicy, StreamChunk,
 } from '@deepseek-ai/dsh-llm'
-import type { AgentCancelCause, Session, SessionSeq, UserMessage } from '@deepseek-ai/dsh-session'
+import type { AgentCancelCause, RequestMessageInjection, Session, SessionSeq, UserMessage } from '@deepseek-ai/dsh-session'
 export type { AgentCancelCause } from '@deepseek-ai/dsh-session'
 import type { Agent, InboxTarget } from './types.ts'
 export type { Agent } from './types.ts'
@@ -345,6 +345,18 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
     */
     'agent/request'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; signal: AbortSignal }, next: () => Promise<LlmCallConfig>): Promise<LlmCallConfig>
+    /**
+     * 贡献仅进入模型请求的 assistant 消息。调用 next() 获取后续声明，
+     * 返回完整数组；通常保留后续声明，再追加本插件的条目。
+     * loop 在组装前校验并持久化完整快照，保证请求可从会话日志重建。
+     * @param payload.agent - 发起模型请求的 agent。
+     * @param payload.turn - 当前打开的 turn 编号。
+     * @param payload.step - 本次请求所在的 step 编号。
+     * @param payload.signal - 当前 turn 的取消信号。
+     * Scope-filtered dispatch（按作用域分发）：局部监听器仅接收所属 agent 的事件。
+     * @mode waterfall
+     */
+    'agent/request-injections'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; signal: AbortSignal }, next: () => Promise<RequestMessageInjection[]>): Promise<RequestMessageInjection[]>
     /**
      * Handle one failed model-request attempt before the loop retries or closes
      * its step. A listener returns `{ kind: 'retry' }` without calling `next()`

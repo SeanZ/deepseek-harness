@@ -7,7 +7,7 @@
  */
 
 import type { ContentBlock, Message } from '@deepseek-ai/dsh-llm'
-import type { EpochHeader } from '@deepseek-ai/dsh-session'
+import type { EpochHeader, RequestMessageInjection } from '@deepseek-ai/dsh-session'
 
 /** Fixed text-density estimate used until exact tokenization is needed. */
 const CHARS_PER_TOKEN = 4
@@ -86,6 +86,23 @@ export function estimateSystemMessage(message: Message): number {
 export function estimateMessage(message: Message): number {
   if (message.role === 'system') return estimateSystemMessage(message)
   return estimateContent(message.content) + ROLE_OVERHEAD
+}
+
+/**
+ * Price request-only assistant declarations under the same message heuristic.
+ * @param injections - canonical request-only declarations to price.
+ * @returns their combined text, block, and role-framing token estimate.
+ */
+export function estimateRequestMessageInjections(
+  injections: readonly RequestMessageInjection[],
+): number {
+  return injections.reduce(
+    (tokens, injection) => tokens
+      + Math.ceil(injection.text.length / CHARS_PER_TOKEN)
+      + BLOCK_OVERHEAD
+      + ROLE_OVERHEAD,
+    0,
+  )
 }
 
 /**

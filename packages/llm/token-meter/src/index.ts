@@ -11,12 +11,15 @@ import type { LlmImageRequestPricing, LlmRuntime, Message, TokenUsage } from '@d
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type {
   EpochHeader,
+  RequestMessageInjection,
   Session,
   SessionEvent,
   SessionLogOffset as SessionLogOffsetType,
 } from '@deepseek-ai/dsh-session'
 import {
   canonicalHeader,
+  canonicalRequestMessageInjections,
+  requestMessageInjectionsEqual,
   headerEquals,
   isSurfaceEvent,
   SessionLogOffset,
@@ -31,7 +34,7 @@ import type {
 } from './types.ts'
 import { contextBreakdownProjectionDefinition } from './breakdown-projection.ts'
 import { contextPressureProjectionDefinition, tokenUsageProjectionDefinition } from './usage-projection.ts'
-import { estimateContent, estimateMessage, estimateToolsTokens, ROLE_OVERHEAD } from './estimate.ts'
+import { estimateContent, estimateRequestMessageInjections, estimateMessage, estimateToolsTokens, ROLE_OVERHEAD } from './estimate.ts'
 import { commitSurfaceTokens, planSurfaceTokens } from './surface-fold.ts'
 import type { MeterSurfaceNode } from './surface-fold.ts'
 import { priceSurface } from './route-pricing.ts'
@@ -50,6 +53,7 @@ export type * from './breakdown-projection.ts'
  */
 interface MeasurementAnchor {
   readonly header: EpochHeader | undefined
+  readonly injections: readonly RequestMessageInjection[]
   /** Priced surface immediately before the anchored assistant message commits. */
   readonly nodes: readonly MeterSurfaceNode[]
   /** Fixed-heuristic price of the call's provider output. */
@@ -61,6 +65,7 @@ interface MeasurementAnchor {
 interface ReplayState {
   consumedEvents: SessionLogOffsetType
   header: EpochHeader | undefined
+  injections: readonly RequestMessageInjection[]
   surface: MeterSurfaceNode[]
   stepStart: { turn: number; step: number } | undefined
   anchor: MeasurementAnchor | undefined
@@ -150,17 +155,19 @@ export class TokenMeter extends Service {
     const pricing = this._routeImagePricing(header)
     const fileText = this._fileRequestText()
     const surface = priceSurface(state.surface, pricing, fileText)
+    const injectionTokens = estimateRequestMessageInjections(state.injections)
     const anchor = state.anchor
 
     let baseline: TokenMeasurementBaseline
     let surfaceDeltaTokens: number
-    if (anchor !== undefined && optionalHeaderEquals(anchor.header, header)) {
+    if (anchor !== undefined && optionalHeaderEquals(anchor.header, header)
+      && requestMessageInjectionsEqual(anchor.injections, state.injections)) {
       // Matching headers share one route, so the anchored snapshot reprices
       // under the same pricing as the current surface and the signed delta
       // compares like with like.
       const anchorSurfaceTokens = priceSurface(anchor.nodes, pricing, fileText).surfaceTokens
         + anchor.assistantTokens
-      const estimatedAnchorTokens = estimateToolsTokens(header) + anchorSurfaceTokens
+      const estimatedAnchorTokens = estimateToolsTokens(header) + estimateRequestMessageInjections(anchor.injections) + anchorSurfaceTokens
       const usage = anchor.usage
       // Signed heuristic deltas remain conservative only from an anchor
       // that is at least as large as the matching full heuristic price.
@@ -168,13 +175,13 @@ export class TokenMeter extends Service {
         ? { kind: 'usage', tokens: usageTokens(usage), usage }
         : { kind: 'estimated', tokens: estimatedAnchorTokens }
       surfaceDeltaTokens = surface.surfaceTokens - anchorSurfaceTokens
-    } else if (header === undefined && surface.surfaceTokens === 0) {
+    } else if (header === undefined && surface.surfaceTokens === 0 && injectionTokens === 0) {
       baseline = { kind: 'none', tokens: 0 }
       surfaceDeltaTokens = 0
     } else {
       baseline = {
         kind: 'estimated',
-        tokens: estimateToolsTokens(header) + surface.surfaceTokens,
+        tokens: estimateToolsTokens(header) + injectionTokens + surface.surfaceTokens,
       }
       surfaceDeltaTokens = 0
     }
@@ -221,6 +228,7 @@ export class TokenMeter extends Service {
       state = {
         consumedEvents: SessionLogOffset(0),
         header: undefined,
+        injections: canonicalRequestMessageInjections([]),
         surface: [],
         stepStart: undefined,
         anchor: undefined,
@@ -244,12 +252,16 @@ export class TokenMeter extends Service {
    */
   private _foldEvent(state: ReplayState, event: SessionEvent): void {
     let nextHeader = state.header
+    let nextInjections = state.injections
     let nextStepStart = state.stepStart
     let nextAnchor = state.anchor
 
     switch (event.type) {
       case 'request/header':
         nextHeader = canonicalHeader(event.data.header)
+        break
+      case 'request/injections':
+        nextInjections = canonicalRequestMessageInjections(event.data.injections)
         break
       case 'step/start':
         if (state.stepStart !== undefined) {
@@ -292,6 +304,7 @@ export class TokenMeter extends Service {
       if (event.data.usage !== undefined && nextHeader !== undefined) {
         nextAnchor = {
           header: nextHeader,
+          injections: nextInjections,
           nodes: [...state.surface],
           assistantTokens: this._estimateProviderAssistant(event),
           usage: event.data.usage,
@@ -299,6 +312,7 @@ export class TokenMeter extends Service {
       } else {
         nextAnchor = {
           header: nextHeader,
+          injections: nextInjections,
           nodes: [...state.surface],
           assistantTokens: eventTokens,
           usage: undefined,
@@ -307,6 +321,7 @@ export class TokenMeter extends Service {
     }
 
     state.header = nextHeader
+    state.injections = nextInjections
     state.stepStart = nextStepStart
     if (plan !== undefined) {
       commitSurfaceTokens(state.surface, plan)

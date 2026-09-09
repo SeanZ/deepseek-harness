@@ -157,6 +157,10 @@ export function assertReleasedPayloadSemantics(event: SessionFormatEvent, versio
       nonEmptyString(data['model'], `${label} model`)
       if (data['contextWindow'] !== undefined) positiveIntegerValue(data['contextWindow'], `${label} contextWindow`)
       return
+    case 'request/injections':
+      // 精确声明语义由当前 Session 读取器校验，迁移保留原始 JSON。
+      if (!Array.isArray(data['injections'])) throw new SessionFormatError(`${label} injections must be an array`)
+      return
     case 'request/header':
       requestHeaderValue(data['header'], `${label} header`)
       literalValue(data['reason'], ['initial', 'resume', 'change', 'series'], `${label} reason`)

@@ -405,7 +405,7 @@ describe('contextBreakdown session projection', () => {
       ctx.sessionProjections.checkpoint(session),
     )) as ReturnType<typeof ctx.sessionProjections.checkpoint>
     const row = checkpoint['contextBreakdown']!
-    expect(row.ver).toBe(4)
+    expect(row.ver).toBe(5)
     expect(ctx.sessionProjections.viewCheckpoint(checkpoint).contextBreakdown).toEqual(projected(ctx, session))
     const replacement = session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'summary' }], source: { kind: 'user' },
@@ -424,7 +424,7 @@ describe('contextBreakdown session projection', () => {
       stale, session.snapshotEvents(), SessionLogOffset(0), session.header, session.inheritedEventCount,
     )
     expect(replayed.snapshot.values.contextBreakdown).toEqual(projected(ctx, session))
-    expect(replayed.checkpoint['contextBreakdown']?.ver).toBe(4)
+    expect(replayed.checkpoint['contextBreakdown']?.ver).toBe(5)
     const invalid = {
       ...checkpoint,
       contextBreakdown: {
@@ -458,7 +458,7 @@ describe('contextBreakdown session projection', () => {
         systemTokens: 8, toolsTokens: staleValue.toolsTokens, messageTokens: 9,
       })
       expect(restored.checkpoint).toEqual(current)
-      expect(restored.checkpoint['contextBreakdown']?.ver).toBe(4)
+      expect(restored.checkpoint['contextBreakdown']?.ver).toBe(5)
     } finally {
       await ctx.fiber.dispose()
     }
@@ -522,4 +522,30 @@ describe('shared estimator', () => {
     expect(estimateToolsTokens({ config: CONFIG, tools: TOOLS }))
       .toBe(Math.ceil(JSON.stringify(TOOLS).length / 4) + 4)
   })
+})
+
+it('注入占用跨历史追加保留，清空后恢复为纯历史估值', async () => {
+  const { ctx, session } = await harness()
+  session.append('turn/start', { turn: 1 })
+  appendSystem(session, '系统')
+  appendUser(session, '请求')
+  const baseline = projected(ctx, session)
+  const injection = {
+    key: 'context', role: 'assistant' as const, text: '上下文'.repeat(100),
+    source: { kind: 'plugin' as const, plugin: 'test' },
+    placement: { kind: 'before-latest-user' as const },
+  }
+  session.append('request/injections', { injections: [injection] })
+  const active = projected(ctx, session)
+  const extra = active.messageTokens - baseline.messageTokens
+  expect(extra).toBeGreaterThan(75)
+  expect(active.systemTokens).toBe(baseline.systemTokens)
+  appendUser(session, '后续输入')
+  const withHistory = projected(ctx, session)
+  expect(withHistory.messageTokens).toBeGreaterThan(active.messageTokens)
+  session.append('request/injections', { injections: [] })
+  expect(projected(ctx, session).messageTokens).toBe(withHistory.messageTokens - extra)
+  expect(ctx.tokenMeter.measure(session).totalTokens).toBe(
+    projected(ctx, session).systemTokens + projected(ctx, session).messageTokens,
+  )
 })

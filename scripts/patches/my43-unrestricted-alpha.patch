@@ -1,0 +1,73 @@
+--- a/src/node.js
++++ b/src/node.js
+@@ -18 +17,0 @@
+-const RPC_CHANNEL = '/dsh-unrestricted'
+@@ -74,0 +74 @@
++  // 使用 alpha 的共享 API 路由，统一执行 Host/Origin 与浏览器 cookie 校验。
+@@ -76,15 +76,9 @@
+-    const disposeRpc = connectionCtx.connection.rpc.handle(
+-      RPC_CHANNEL,
+-      (endpoint) => endpoint === 'status'
+-        ? ok(statusPayload())
+-        : {
+-            ok: false,
+-            error: {
+-              code: 'internal',
+-              message: `dsh-unrestricted: unknown endpoint ${JSON.stringify(endpoint)}`,
+-              details: {},
+-            },
+-          },
+-      { authority: 'loopback' },
+-    )
+-    return async () => { await disposeRpc() }
++    return connectionCtx.connection.fetch.register({
++      path: '/api/unrestricted/status',
++      methods: ['POST'],
++      requestBody: 'buffered',
++      fetch: async (request) => {
++        const { rpcId } = await request.json()
++        return Response.json({ type: 'server-response', rpcId, result: ok(statusPayload()) })
++      },
++    })
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -9 +9 @@
+-		const RPC_CHANNEL = "/dsh-unrestricted";
++		const RPC_CHANNEL = "/api";
+@@ -45 +45 @@
+-				const result = await connection.rpc.call(RPC_CHANNEL, endpoint, {});
++				const result = await connection.rpc.call(RPC_CHANNEL, "unrestricted/" + endpoint, {});
+--- a/tests/node.spec.mjs
++++ b/tests/node.spec.mjs
+@@ -14,0 +15 @@
++  let statusRoute
+@@ -31 +32,6 @@
+-    inject: () => {},
++    inject: (_services, callback) => callback({
++      connection: { fetch: { register: (route) => {
++        statusRoute = route
++        return () => {}
++      } } },
++    }),
+@@ -34,0 +41 @@
++    statusRoute: () => statusRoute,
+@@ -81,0 +89,19 @@
++
++
++test('状态通过共享 API 返回完整 RPC 响应，设置更新即时可见', async () => {
++  const host = harness()
++  const route = host.statusRoute()
++  assert.equal(route.path, '/api/unrestricted/status')
++  assert.deepEqual(route.methods, ['POST'])
++  assert.equal(route.requestBody, 'buffered')
++  const call = () => route.fetch(new Request('http://localhost/api/unrestricted/status', {
++    method: 'POST', body: JSON.stringify({ rpcId: 'status-test' }),
++  })).then(response => response.json())
++  const first = await call()
++  assert.equal(first.type, 'server-response')
++  assert.equal(first.rpcId, 'status-test')
++  assert.equal(first.result.value.compatible, true)
++  assert.equal(first.result.value.enabled, true)
++  host.update({ enabled: false })
++  assert.equal((await call()).result.value.enabled, false)
++})

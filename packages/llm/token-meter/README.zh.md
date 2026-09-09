@@ -48,7 +48,7 @@ const price = ctx.tokenMeter.estimateMessage(message)
 
 当组合提供 `ctx.sessionProjections` 时，token-meter 注册三个投影单元。`tokenUsage` 携带完整持久日志中的 `uncachedInputTokens`、`outputTokens`、`cacheReadTokens` 与 `cacheWriteTokens`。最终 assistant 消息样本会替换同一次尝试的流式用量；`llm/retry-started` 会结束该替换范围，因此同一步骤中的重试会贡献另一次计费用量。`contextPressure` 携带可选 `pressureTokens`（提供方报告的最新提示词规模）、可选 `projectedTokens`（下一个请求的提示词将花费多少）与来自最新一条 `request/context` 记录的可选 `contextWindow`。`contextBreakdown` 携带启发式 `systemTokens`、`toolsTokens` 与 `messageTokens`——上下文的构成，而非提供方计费规模。卸载插件会移除全部三个键。
 
-`contextBreakdown` 把 surface 顺序中最后一个非空且存活的 `system/message` 归入 `systemTokens`；休眠的空节点不贡献 token，没有非空系统消息时为零。`messageTokens` 包含其余所有可见节点，包括被取代的提示词。两者之和始终等于 `measure().nodes[].heuristicTokens`，未计量替换、压缩和逐节点清空提示词之后也成立。`toolsTokens` 跟随最新 `request/header`。三个数字都使用固定启发式规则，而非路由图片定价或文件 handle 投影；它们是近似构成，不是计费数据或 `projectedTokens`。
+`contextBreakdown` 将历史中最后一个非空 `system/message` 计入 `systemTokens`，空节点计零；`messageTokens` 包含其他可见节点和当前 `request/injections` 声明。两者之和等于历史节点估算值加注入估算值。`toolsTokens` 来自最新 `request/header`。注入变化使旧的请求用量锚点失效；清空注入同时清空其占用。所有分项使用固定启发式估算，不能当作供应商计费量或 `projectedTokens`。
 
 `deriveTurnTokenUsage(events)` 为浏览器消费方把一个完整 Turn 折叠为精确的逐次尝试与整轮用量。生命周期证据缺失、计数不安全或精确总量矛盾时不返回结果；只有每次参与的尝试都报告可选缓存、推理或路由值时，相应汇总才会出现。
 

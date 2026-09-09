@@ -1,0 +1,8 @@
+version: 1
+scenario: request-injections
+profile: sdk
+composition: request-injections
+recording: authored
+header:
+  class: request-injections
+  pin: true

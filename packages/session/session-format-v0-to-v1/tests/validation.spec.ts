@@ -68,6 +68,7 @@ const validPayloads: Readonly<Record<string, SessionFormatJsonValue>> = {
   'permission/preset': { preset: 'default' },
   'plan/mode': { active: true },
   'request/context': { provider: 'mock', model: 'mock', contextWindow: 8192 },
+  'request/injections': { injections: [] },
   'request/header': {
     header: {
       config: { provider: 'mock', model: 'mock', reasoningEffort: 'high', maxTokens: 100 },
@@ -214,7 +215,7 @@ function replaceAtPath(value: SessionFormatJsonValue, path: string, replacement:
 describe('released event and payload inventory', () => {
   it('has an executable valid fixture for every frozen released-v0 event type', () => {
     expect(Object.keys(validPayloads).sort()).toEqual([...RELEASED_V0_EVENT_TYPES].sort())
-    expect(RELEASED_V0_EVENT_TYPES).toHaveLength(51)
+    expect(RELEASED_V0_EVENT_TYPES).toHaveLength(52)
     expect(RELEASED_V0_EVENT_TYPES.filter(type => !KNOWN_SESSION_EVENT_TYPES.has(type))).toEqual([
       'assistant/chunk',
       'tool/code-dispatch',

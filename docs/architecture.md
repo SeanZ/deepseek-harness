@@ -89,9 +89,10 @@ turn/start
      reject, or a first enter rewritten empty -> close the turn with no step
      step/start
      agent/request -> prepareCall (cancellation commits neither system nor users)
+     agent/request-injections -> validate the complete request-only snapshot
      reconcile system/message using the prepared call capability
      append entered messages as user/message; log request/header and request/context as needed
-     derive and freeze model history from the log
+     log changed request/injections; materialize and freeze model messages from the log
      stream the bound prepared call -> llm/stream -> agent/assistant-stream start
        agent/assistant-stream chunk*
        assistant/message | assistant/attempt -> agent/assistant-stream end

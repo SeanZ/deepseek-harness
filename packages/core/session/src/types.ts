@@ -251,6 +251,24 @@ export interface RequestContext {
 }
 
 /**
+ * 持久化的请求专用消息声明，不进入聊天历史；每次请求根据当前历史重新定位。
+ */
+export interface RequestMessageInjection {
+  /** 生产者提供的稳定标识，在单次完整快照内唯一。 */
+  readonly key: string
+  /** 请求注入仅支持 assistant 角色。 */
+  readonly role: 'assistant'
+  /** 发送给模型的完整文本。 */
+  readonly text: string
+  /** 保留到模型消息上的插件来源。 */
+  readonly source: { readonly kind: 'plugin'; readonly plugin: string }
+  /** 放在最近的人类消息之前，或从末尾按完整工具交互单元计算深度；保留开头的 system 消息。 */
+  readonly placement:
+    | { readonly kind: 'before-latest-user' }
+    | { readonly kind: 'depth'; readonly depth: number }
+}
+
+/**
  * Why a `request/header` snapshot was appended: `'initial'` — the log's first
  * header (a new conversation); `'resume'` — a loop instance's first request
  * over a log that already has header events (process restart, fork seed);
@@ -375,6 +393,8 @@ export interface SessionEventMap {
    * call's capability, not this snapshot from an earlier request.
    */
   'request/context': RequestContext
+  /** 完整请求注入快照；空数组清除旧声明，读取器不得忽略此事件。 */
+  'request/injections': { injections: RequestMessageInjection[] }
   /**
    * Marks the end of a constructor seed. Events before it have smaller seq
    * values and came from the seed (resume, fork, or replay); this lifecycle

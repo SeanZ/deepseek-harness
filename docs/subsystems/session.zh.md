@@ -133,6 +133,8 @@ interface SessionEventMap {
    * call's capability, not this snapshot from an earlier request.
    */
   'request/context': RequestContext
+  /** 完整请求注入快照；空数组清除旧声明，读取器不得忽略此事件。 */
+  'request/injections': { injections: RequestMessageInjection[] }
   /**
    * Marks the end of a constructor seed. Events before it have smaller seq
    * values and came from the seed (resume, fork, or replay); this lifecycle
@@ -203,6 +205,31 @@ interface RequestContext {
   systemPromptUpdate?: SystemPromptUpdate
 }
 ```
+
+### 请求专用消息声明
+
+`request/injections` 保存完整快照，空数组清空旧声明。模型请求在派生历史上插入声明，聊天历史不增加消息；注入变化或存在有效注入时，请求开始新的消息序列。
+
+```ts type-equiv
+/**
+ * 持久化的请求专用消息声明，不进入聊天历史；每次请求根据当前历史重新定位。
+ */
+interface RequestMessageInjection {
+  /** 生产者提供的稳定标识，在单次完整快照内唯一。 */
+  readonly key: string
+  /** 请求注入仅支持 assistant 角色。 */
+  readonly role: 'assistant'
+  /** 发送给模型的完整文本。 */
+  readonly text: string
+  /** 保留到模型消息上的插件来源。 */
+  readonly source: { readonly kind: 'plugin'; readonly plugin: string }
+  /** 放在最近的人类消息之前，或从末尾按完整工具交互单元计算深度；保留开头的 system 消息。 */
+  readonly placement:
+    | { readonly kind: 'before-latest-user' }
+    | { readonly kind: 'depth'; readonly depth: number }
+}
+```
+
 
 ## `SessionEvent<T>`：一条日志条目
 

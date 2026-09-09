@@ -1,0 +1,38 @@
+{
+  "finalResponse": "PYTHON_INJECTION_OK",
+  "finishReason": "completed",
+  "modelRoles": [
+    [
+      "system",
+      "assistant",
+      "user",
+      "user"
+    ]
+  ],
+  "injectionEvents": [
+    {
+      "injections": [
+        {
+          "key": "snapshot-guidance",
+          "role": "assistant",
+          "text": "已收到项目术语表，回答时保持术语一致。",
+          "source": {
+            "kind": "plugin",
+            "plugin": "test-request-injections"
+          },
+          "placement": {
+            "kind": "before-latest-user"
+          }
+        }
+      ]
+    }
+  ],
+  "assistantOutputs": [
+    [
+      {
+        "type": "text",
+        "text": "PYTHON_INJECTION_OK"
+      }
+    ]
+  ]
+}

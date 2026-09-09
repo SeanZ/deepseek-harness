@@ -1144,6 +1144,31 @@ Types: [LlmFailure](llm-streaming.md) · [ResolvedRetryPolicy](llm-streaming.md)
 
 Source: [`packages/core/agent/src/runtime-types.ts`](../../packages/core/agent/src/runtime-types.ts)
 
+<a id="agentrequest-injections--waterfall"></a>
+
+#### `agent/request-injections` — waterfall
+
+贡献仅进入模型请求的 assistant 消息。调用 next() 获取后续声明， 返回完整数组；通常保留后续声明，再追加本插件的条目。 loop 在组装前校验并持久化完整快照，保证请求可从会话日志重建。
+
+```ts cordis-catalog
+/**
+ * 贡献仅进入模型请求的 assistant 消息。调用 next() 获取后续声明，
+ * 返回完整数组；通常保留后续声明，再追加本插件的条目。
+ * loop 在组装前校验并持久化完整快照，保证请求可从会话日志重建。
+ * @param payload.agent - 发起模型请求的 agent。
+ * @param payload.turn - 当前打开的 turn 编号。
+ * @param payload.step - 本次请求所在的 step 编号。
+ * @param payload.signal - 当前 turn 的取消信号。
+ * Scope-filtered dispatch（按作用域分发）：局部监听器仅接收所属 agent 的事件。
+ * @mode waterfall
+ */
+'agent/request-injections'(this: Scoped<Agent>, payload: { agent: Agent; turn: number; step: number; signal: AbortSignal }, next: () => Promise<RequestMessageInjection[]>): Promise<RequestMessageInjection[]>
+```
+
+Types: [RequestMessageInjection](session.md) · [Scoped](scope.md)
+
+Source: [`packages/core/agent/src/runtime-types.ts`](../../packages/core/agent/src/runtime-types.ts)
+
 <a id="agentsession-start--emit"></a>
 
 #### `agent/session-start` — emit

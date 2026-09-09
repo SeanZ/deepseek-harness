@@ -76,6 +76,8 @@ export const RELEASED_V0_EVENT_DISPOSITIONS: Readonly<Record<string, ReleasedV0P
   'permission/preset': disposition(['preset']),
   'plan/mode': disposition(['active']),
   'request/context': disposition(['provider', 'model'], ['contextWindow']),
+  // my43 的 0.1.2 补丁已写入此事件，载荷不含会话序号引用。
+  'request/injections': disposition(['injections'], [], ['injections']),
   'request/header': disposition(['header', 'reason'], ['startsSeries']),
   'sandbox/mode': disposition(['mode'], ['source']),
   'schedule/change': disposition(['version', 'operation'], ['schedule', 'id', 'acceptedAt']),

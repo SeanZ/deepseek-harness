@@ -5,9 +5,9 @@
  */
 
 import { z } from 'zod'
-import { canonicalHeader, isSurfaceEvent, SessionSeq } from '@deepseek-ai/dsh-session'
+import { canonicalHeader, canonicalRequestMessageInjections, isSurfaceEvent, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import { estimateToolsTokens } from './estimate.ts'
+import { estimateRequestMessageInjections, estimateToolsTokens } from './estimate.ts'
 import { commitSurfaceTokens, planSurfaceTokens } from './surface-fold.ts'
 // Import for the `contextBreakdown` SessionProjectionStateMap key merge.
 import type {} from './projection.ts'
@@ -35,6 +35,7 @@ const contextBreakdownStateSchema = z.object({
     system: z.boolean(),
   }).strict()),
   breakdown: breakdownSchema,
+  injectionTokens: tokenCount,
 }).strict()
 type ContextBreakdownState = z.infer<typeof contextBreakdownStateSchema>
 
@@ -47,10 +48,11 @@ type ContextBreakdownState = z.infer<typeof contextBreakdownStateSchema>
  */
 export const contextBreakdownProjectionDefinition = {
   key: 'contextBreakdown',
-  stateVersion: 4,
+  stateVersion: 5,
   stateSchema: contextBreakdownStateSchema,
   init: (): ContextBreakdownState => ({
     nodes: [],
+    injectionTokens: 0,
     breakdown: { systemTokens: 0, toolsTokens: 0, messageTokens: 0 },
   }),
   apply: (state, event) => {
@@ -59,6 +61,12 @@ export const contextBreakdownProjectionDefinition = {
       return toolsTokens === state.breakdown.toolsTokens
         ? state
         : { ...state, breakdown: { ...state.breakdown, toolsTokens } }
+    }
+    if (event.type === 'request/injections') {
+      const injectionTokens = estimateRequestMessageInjections(canonicalRequestMessageInjections(event.data.injections))
+      return { ...state, injectionTokens, breakdown: {
+        ...state.breakdown, messageTokens: state.breakdown.messageTokens + injectionTokens - state.injectionTokens,
+      } }
     }
     if (!isSurfaceEvent(event)) return state
     const plan = planSurfaceTokens(state.nodes, event)
@@ -72,7 +80,7 @@ export const contextBreakdownProjectionDefinition = {
     const breakdown = systemTokens === state.breakdown.systemTokens && messageTokens === state.breakdown.messageTokens
       ? state.breakdown
       : { systemTokens, toolsTokens: state.breakdown.toolsTokens, messageTokens }
-    return { nodes, breakdown }
+    return { nodes, breakdown, injectionTokens: state.injectionTokens }
   },
   wire: {
     viewSchema: breakdownSchema,

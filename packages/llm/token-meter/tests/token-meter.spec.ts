@@ -644,3 +644,26 @@ describe('malformed replay and listener lifecycle', () => {
     await secondFiber.dispose()
   })
 })
+
+it('请求注入计入总压力，修改声明使旧 usage 锚点失效，清空恢复原估值', () => {
+  const subject = meter()
+  const session = Session.create(SessionId('injection-meter'))
+  session.append('turn/start', { turn: 1 })
+  appendSystem(session, '系统说明')
+  const before = subject.measure(session)
+  const injection = {
+    key: 'context', role: 'assistant' as const, text: 'x'.repeat(400),
+    source: { kind: 'plugin' as const, plugin: 'test' }, placement: { kind: 'depth' as const, depth: 0 },
+  }
+  session.append('request/injections', { injections: [injection] })
+  const active = subject.measure(session)
+  expect(active.surfaceTokens).toBe(before.surfaceTokens)
+  expect(active.totalTokens).toBeGreaterThan(before.totalTokens + 100)
+  appendSuccessfulCall(session, header('mock'), { usage: { inputTokens: 10_000, outputTokens: 1 } })
+  expect(subject.measure(session).baseline.kind).toBe('usage')
+  session.append('request/injections', { injections: [{ ...injection, text: 'y'.repeat(400) }] })
+  expect(subject.measure(session).baseline.kind).toBe('estimated')
+  const changed = subject.measure(session)
+  session.append('request/injections', { injections: [] })
+  expect(subject.measure(session).totalTokens).toBe(changed.totalTokens - (active.totalTokens - before.totalTokens))
+})
