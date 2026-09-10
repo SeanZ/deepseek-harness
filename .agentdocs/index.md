@@ -1,6 +1,6 @@
 ## 架构与运行约束
 
-`architecture/my43-request-injections.md` - 注入协议、历史日志兼容边界、Caddy/Authelia 引导与隔离验证入口；后续升级、打包、部署时必读。
+`architecture/my43-request-injections.md` - 注入协议、历史日志兼容边界、插件安装副本、Linux 产物构建约束、Caddy/Authelia 引导与隔离验证入口；后续升级、打包、部署时必读。
 
 ## 当前任务文档
 

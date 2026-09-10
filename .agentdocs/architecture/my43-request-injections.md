@@ -12,7 +12,9 @@
 
 补丁对象为 my43 的 `dsh-unrestricted` 0.3.0 源码目录，包含 node 入口、现有 client bundle 和状态测试。未来部署时先保留插件原目录副本，在新插件副本内执行 `git apply --unidiff-zero --check <本仓库绝对路径>/scripts/patches/my43-unrestricted-alpha.patch`，成功后再 `git apply --unidiff-zero <同一补丁路径>`；回退使用 `git apply --unidiff-zero --reverse`。只有校验成功才应用；其他版本不可盲套。已在本地原版副本上验证正向应用，修改后验证反向检查，并通过原有插件测试与新增状态测试。
 
-不恢复旧 authority 参数，不新增 Caddy 放行路径，不输出密钥。共享 API 执行既有 Host、Origin、cookie 校验。当前补丁直接适配原插件已构建 client.js；未来若重建插件，需同步其 controller 源码中的 channel 与 endpoint，避免旧调用重新出现。
+不恢复旧 authority 参数，不新增 Caddy 放行路径，不输出密钥。共享 API 执行既有 Host、Origin、cookie 校验。当前补丁直接适配原插件已构建 client.js；未来若重建插件，需同步其 controller 源码中的 channel 与 endpoint，避免旧调用重新出现。远端 Git 跟踪了 `src/client/controller.ts`，不可将本地审计副本缺少该文件理解为原项目没有源码。
+
+2026-09-10 只读核验：远端插件仓库 `/home/ubuntu/workspace/agent/dsh-plugins/dsh-unrestricted` 干净，HEAD 为 `8c4204c`，版本 `0.3.0`；`49fc8d7` 引入按 preset 选择的 assistant 注入，后续提交调整内容与跨 provider 锚定。web profile 的依赖声明为 `file:/home/ubuntu/workspace/agent/dsh-plugins/dsh-unrestricted`，bundle 列表包含插件，插件自身 `cordis.patch.yml` 插入 unrestricted 节点。`/home/ubuntu/.dsh/profiles/web/node_modules/dsh-unrestricted` 是目录副本而非软链接；其 `src/node.js`、`src/rules.js`、`lib/client.js` 与源目录 SHA-256 一致。更新源码不等于更新安装副本；部署应使用单独打包并校验的插件产物，重新安装并检查实际加载路径与哈希。
 
 ## 历史日志边界
 
@@ -27,6 +29,18 @@ my43 日志只复制到忽略目录后离线审计：73 个会话中 68 个通�
 Authelia 放行不等同于取得 DSH cookie。根入口的 DSH 401 跳转到 `/_dsh/bootstrap`，该路径同样受 Authelia 保护。systemd `ExecStartPost` 运行 `/usr/local/libexec/dsh-caddy-bootstrap $MAINPID $INVOCATION_ID`：按本次 invocation 和进程查找启动令牌，原子写入 `/run/dsh-browser-bootstrap/index.html`，权限 root:caddy 0640，页面跳转到 HTTPS 的令牌兑换地址。Caddy 对 bootstrap 与根响应禁止缓存；不要恢复把 bootstrap 静态页直接绑定 `/` 的旧方案。
 
 alpha 的 loopback 启动 URL 格式兼容现有脚本，本地真实 CLI 测试证明 cookie 可跨进程重启复用。未来打包运行时必须确认 systemd MAINPID 对应实际输出启动 URL 的 Node 进程；保留同一 credentials 的 browser-session 记录和原 ExecStartPost。远端 Caddy validate 与服务状态均只读检查通过；未重启服务，也未模拟真实外部登录完成部署验收。
+
+## 后续构建与部署边界
+
+2026-09-10 实机核验：本机 macOS arm64，my43 为 Ubuntu 24.04.4 x86_64、glibc 2.39、Node 22.23.2。my43 物理内存约 3.6 GiB，已有 swap 占用。采用本地 Linux amd64 容器或虚拟机组装并测试完整生产运行目录，远端仅解压与启动；不能直接复制 macOS 的 node_modules。本次未发现本地 Docker、OrbStack、Podman 可用入口，构建环境尚待准备，Linux 产物尚未验证。
+
+复用 `scripts/release/pack.ts` 的 dsh/vendor 产物边界及 `verify-packed-install.ts` 的独立消费目录思路，所有带补丁的 workspace 包必须来自同一提交，避免只安装 CLI tarball 却从 registry 解析到未打补丁的内部依赖。native/system 是另一发布序列；node-addon-system、node-pty、koffi、ripgrep 等平台产物必须匹配 Linux x64，生命周期脚本在本地 Linux 构建阶段完成。现有 packed-install 检查省略 optional dependencies 且只验证版本，不能代替完整 web、PTY、搜索、日志持久化和 sandbox 验证。`build-exe-for-python-sdk.ts` 对 Linux PTY 明确要求目标架构与构建主机匹配；不应承诺在 macOS 原生环境直接跨平台打出可用单文件。优先采用普通 Node 加完整运行目录，保留现有进程与插件加载方式。
+
+生产 `dsh.service` 直接通过 `/usr/local/bin/node` 启动旧仓库 `apps/cli/lib/bin.js`，工作目录 `/home/ubuntu/workspace/zx-n`，DSH_HOME `/home/ubuntu/.dsh`，DSH_AGENTS_HOME `/home/ubuntu/.agents`。未来产物可置于 `/home/ubuntu` 下独立 releases 目录，通过 current 软链接选版本，ExecStart 直接指向产物中的 CLI。只调整必要的启动路径，保留端口 3080、trusted-host、用户、home、工作目录与安全限制；保留 `20-google-provider-ipv4.conf` 和 `30-caddy-bootstrap.conf`。后者以提升权限的 ExecStartPost 刷新引导页，但失败被忽略，不能仅凭 systemd active 判断登录链路正常；必须检查本次 invocation 的成功日志与实际 HTTPS 引导。
+
+后续部署前先在独立 home/端口验证最终 Linux 产物和插件，再停服务对生产 home、profile 与配置做一致快照，切换产物后检查完整 Authelia → bootstrap → DSH cookie → API/流式响应链路。回滚需同时考虑运行版本、插件/profile 和会话数据快照；旧 generation 保留并不保证旧程序可读取升级后的 home，回滚快照会舍弃切换后新增数据，不能只承诺切回软链接即可无损降级。sidebar 与 scheduled-tasks 仍需兼容验证；旧 context 可按用户授权从目标 profile 移除。
+
+本节记录部署设计约束，本次没有生成 Linux 部署包、上传产物或修改远端服务。
 
 ## 本地验证入口
 
