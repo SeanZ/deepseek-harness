@@ -50,6 +50,8 @@ When the composition provides `ctx.sessionProjections`, token-meter registers th
 
 `contextBreakdown` classifies the last nonempty surviving `system/message` as `systemTokens`; empty nodes contribute zero. `messageTokens` includes other visible nodes and the current `request/injections` declarations. Their sum equals node heuristics plus injection heuristics. `toolsTokens` follows the latest `request/header`. A changed injection snapshot invalidates the previous usage anchor; clearing injections clears their occupancy. All components use the fixed heuristic and do not represent provider billing or `projectedTokens`.
 
+`deriveTurnTokenUsage(events)` folds one complete turn into exact per-attempt and whole-turn usage for browser consumers. It returns no result when lifecycle evidence is missing, counts are unsafe, or exact totals conflict; each corresponding aggregate appears only when every participating attempt reports its optional cache, reasoning, or route value.
+
 ### Composition
 
 ```yaml
@@ -145,7 +147,7 @@ These limits define where the measurement stops and future work begins. They are
 
 This Dev Note is non-authoritative working context: notes for maintainers and open questions. Shipped behavior and accepted rationale live in the sections above, the package code, and the linked Agent Notes.
 
-- The fixed four-characters-per-token heuristic underprices CJK text and JSON schemas; the provider anchor carries exactly that error when usage is reused, and present the composition rows as an approximate composition, never as a total.
+- The fixed four-characters-per-token heuristic underprices CJK text and JSON schemas; the provider anchor carries exactly that error when usage is reused. Present the composition rows as an approximate composition, never as a total.
 - A per-provider exact tokenizer is not decided; keeping one deterministic heuristic is what makes every consumer's measurement agree and replay-stable.
 
 </details>
