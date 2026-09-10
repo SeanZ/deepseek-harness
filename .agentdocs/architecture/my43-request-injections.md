@@ -2,11 +2,11 @@
 
 ## 补丁边界
 
-当前分支在官方 `dsh-v0.1.5-alpha.2` 上保留 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
+当前分支以官方 `dsh-v0.1.5-rc.2` 为基线，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
 
 `request/injections` 是 required 持久事件，不属于聊天历史节点。发送前记录、按日志重建；重试重新读取声明，准备阶段取消不提交用户输入或注入。存在注入或快照改变时开始新请求序列，让 alpha 的系统消息策略与可能发生位置变化的请求一致；因此不能承诺跨请求前缀缓存连续性。token-meter 将注入计入请求占用，单独保留历史节点计量；声明变化使旧 usage 锚点失效。
 
-`creative` 使用当前 standard 的完整组合，独立标识用于外部插件选择，不自行提供注入文本。两者解析后相等由测试锁定。alpha 不提供 preset 继承，因此维护 standard 时需同步 creative。`dsh-unrestricted` 0.3.0 的主机逻辑和六次真实工具调用已验证。其旧独立 RPC 状态入口在 alpha 返回 HTTP 405；[兼容补丁](../../scripts/patches/my43-unrestricted-alpha.patch) 将主机和客户端状态读取迁到共享 `/api/unrestricted/status`，浏览器显示已开启且无操作错误，插件测试验证状态随设置变化。它不修改注入文本。旧 `dsh-context` 不在验证 profile 中；sidebar、scheduled-tasks 外部插件未加入该隔离 profile，不能将核心通过理解为这些插件已经完成升级兼容测试。
+`creative` 使用当前 standard 的完整组合，独立标识用于外部插件选择，不自行提供注入文本。两者解析后相等由测试锁定。alpha 不提供 preset 继承，因此维护 standard 时需同步 creative。`dsh-unrestricted` 0.3.0 的主机逻辑和六次真实工具调用已验证。其旧独立 RPC 状态入口在 alpha 返回 HTTP 405；[兼容补丁](../../scripts/patches/my43-unrestricted-alpha.patch) 将主机和客户端状态读取迁到共享 `/api/unrestricted/status`，浏览器显示已开启且无操作错误，插件测试验证状态随设置变化。它不修改注入文本。首次核心隔离验证未包含旧 `dsh-context`、sidebar 与 scheduled-tasks；后续完整插件验收与当前安装状态见下文。旧 context 已按授权移除。
 
 ## 配套插件兼容补丁
 
@@ -28,7 +28,7 @@ my43 日志只复制到忽略目录后离线审计：73 个会话中 68 个通�
 
 Authelia 放行不等同于取得 DSH cookie。根入口的 DSH 401 跳转到 `/_dsh/bootstrap`，该路径同样受 Authelia 保护。systemd `ExecStartPost` 运行 `/usr/local/libexec/dsh-caddy-bootstrap $MAINPID $INVOCATION_ID`：按本次 invocation 和进程查找启动令牌，原子写入 `/run/dsh-browser-bootstrap/index.html`，权限 root:caddy 0640，页面跳转到 HTTPS 的令牌兑换地址。Caddy 对 bootstrap 与根响应禁止缓存；不要恢复把 bootstrap 静态页直接绑定 `/` 的旧方案。
 
-alpha 的 loopback 启动 URL 格式兼容现有脚本，本地真实 CLI 测试证明 cookie 可跨进程重启复用。未来打包运行时必须确认 systemd MAINPID 对应实际输出启动 URL 的 Node 进程；保留同一 credentials 的 browser-session 记录和原 ExecStartPost。远端 Caddy validate 与服务状态均只读检查通过；未重启服务，也未模拟真实外部登录完成部署验收。
+alpha 的 loopback 启动 URL 格式兼容现有脚本，本地真实 CLI 测试证明 cookie 可跨进程重启复用。未来打包运行时必须确认 systemd MAINPID 对应实际输出启动 URL 的 Node 进程；保留同一 credentials 的 browser-session 记录和原 ExecStartPost。初次迁移审计阶段只读检查了远端 Caddy validate 与服务状态；后续生产切换另外验证本次启动引导、cookie 和公网认证边界，不将匿名跳转检查称为真实用户完整登录验收。
 
 ## 后续构建与部署边界
 
@@ -36,9 +36,9 @@ alpha 的 loopback 启动 URL 格式兼容现有脚本，本地真实 CLI 测试
 
 复用 `scripts/release/pack.ts` 的 dsh/vendor 产物边界及 `verify-packed-install.ts` 的独立消费目录思路，所有带补丁的 workspace 包必须来自同一提交，避免只安装 CLI tarball 却从 registry 解析到未打补丁的内部依赖。native/system 是另一发布序列；node-addon-system、node-pty、koffi、ripgrep 等平台产物必须匹配 Linux x64，不能将忽略生命周期脚本理解为依赖必然可运行，需逐项验证实际加载和工具执行。现有 packed-install 检查省略 optional dependencies 且只验证版本，不能代替完整 web、PTY、搜索、日志持久化和 sandbox 验证。`build-exe-for-python-sdk.ts` 对 Linux PTY 明确要求目标架构与构建主机匹配；不应承诺在 macOS 原生环境直接跨平台打出可用单文件。优先采用普通 Node 加完整运行目录，保留现有进程与插件加载方式。
 
-生产 `dsh.service` 直接通过 `/usr/local/bin/node` 启动旧仓库 `apps/cli/lib/bin.js`，工作目录 `/home/ubuntu/workspace/zx-n`，DSH_HOME `/home/ubuntu/.dsh`，DSH_AGENTS_HOME `/home/ubuntu/.agents`。未来产物可置于 `/home/ubuntu` 下独立 releases 目录，通过 current 软链接选版本，ExecStart 直接指向产物中的 CLI。只调整必要的启动路径，保留端口 3080、trusted-host、用户、home、工作目录与安全限制；保留 `20-google-provider-ipv4.conf` 和 `30-caddy-bootstrap.conf`。后者以提升权限的 ExecStartPost 刷新引导页，但失败被忽略，不能仅凭 systemd active 判断登录链路正常；必须检查本次 invocation 的成功日志与实际 HTTPS 引导。
+首次部署前，生产 `dsh.service` 直接通过 `/usr/local/bin/node` 启动旧仓库 `apps/cli/lib/bin.js`，工作目录 `/home/ubuntu/workspace/zx-n`，DSH_HOME `/home/ubuntu/.dsh`，DSH_AGENTS_HOME `/home/ubuntu/.agents`。未来产物可置于 `/home/ubuntu` 下独立 releases 目录，通过 current 软链接选版本，ExecStart 直接指向产物中的 CLI。只调整必要的启动路径，保留端口 3080、trusted-host、用户、home、工作目录与安全限制；保留 `20-google-provider-ipv4.conf` 和 `30-caddy-bootstrap.conf`。后者以提升权限的 ExecStartPost 刷新引导页，但失败被忽略，不能仅凭 systemd active 判断登录链路正常；必须检查本次 invocation 的成功日志与实际 HTTPS 引导。
 
-后续部署前先在独立 home/端口验证最终 Linux 产物和插件，再停服务对生产 home、profile 与配置做一致快照，切换产物后检查完整 Authelia → bootstrap → DSH cookie → API/流式响应链路。回滚需同时考虑运行版本、插件/profile 和会话数据快照；旧 generation 保留并不保证旧程序可读取升级后的 home，回滚快照会舍弃切换后新增数据，不能只承诺切回软链接即可无损降级。sidebar 与 scheduled-tasks 仍需兼容验证；旧 context 可按用户授权从目标 profile 移除。
+后续部署前先在独立 home/端口验证最终 Linux 产物和插件，再停服务对生产 home、profile 与配置做一致快照，切换产物后检查完整 Authelia → bootstrap → DSH cookie → API/流式响应链路。回滚需同时考虑运行版本、插件/profile 和会话数据快照；旧 generation 保留并不保证旧程序可读取升级后的 home，回滚快照会舍弃切换后新增数据，不能只承诺切回软链接即可无损降级。完整 profile 应覆盖 sidebar 与 scheduled-tasks 的兼容验证；旧 context 已按用户授权从目标 profile 移除。
 
 本节记录部署设计约束；执行状态以当前任务文档为准。
 
@@ -58,7 +58,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260910-rc1-2c122992`，核心为 patched `0.1.5-rc.1`，制品提交 `2c122992a9b5ba9ff5ca0c5ee23b05ae80c7c228`。外部插件装在 release 内，web profile 的三项依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260911-rc2`，核心为 patched `0.1.5-rc.2`，制品提交 `56265e5f8c77cb6667c72ff4c2fe5ad108eb365f`。外部插件装在 release 内，web profile 的三项依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -68,7 +68,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## Better Sidebar 原生右栏适配
 
-DSH alpha.2 与 rc.1 已验证搭配 `dsh-better-sidebar@0.19.0-alpha.1`，不要使用面向旧核心的 npm latest 0.18.x。该版本移除插件自绘右栏，将文件、终端等页面注册进官方右栏，并保留底部工作台。旧右栏布局不能承诺原样迁移；官方右栏标签刷新后的恢复能力也不等同于插件的 PTY 断线重连。
+DSH alpha.2、rc.1 与 rc.2 已验证搭配 `dsh-better-sidebar@0.19.0-alpha.1`，不要使用面向旧核心的 npm latest 0.18.x。该版本移除插件自绘右栏，将文件、终端等页面注册进官方右栏，并保留底部工作台。旧右栏布局不能承诺原样迁移；官方右栏标签刷新后的恢复能力也不等同于插件的 PTY 断线重连。
 
 当前制品为 `0.19.0-alpha.1+my43.1`，补丁位于 `scripts/patches/my43-sidebar-alpha-download.patch`，同时包含 Host TypeScript 与发布 JS 的最小修改。官方交付文件可能携带相对路径，媒体/下载路由需先相对会话权威 cwd 解析，再执行原有 realpath 和工作区边界校验；不能改用浏览器传入的 cwd 覆盖会话目录。原版直接下载这种文件会返回 400。应用补丁后需单独将 package.json 版本设为上述构建标记再打包；重建 Host 时源码补丁仍有效。
 
@@ -80,6 +80,18 @@ DSH alpha.2 与 rc.1 已验证搭配 `dsh-better-sidebar@0.19.0-alpha.1`，不�
 
 发布制品必须在提交后执行 `pnpm run build:official`，再用 `pnpm run release:pack --family dsh --out <目录> --concurrency 4` 打包；普通 build 的开发标识或过期提交会被发布检查拒绝。不能改成 `pnpm exec tsx scripts/release/pack.ts`，其缺少 pack 子进程需要的 npm_execpath。内部包统一来自该提交，未变化的 vendor、原生包和外部插件可保留现有锁定安装；安装后校验 tarball 哈希、实际包文件及保留插件字节。远端 npm 安装禁用脚本并限制内存，不执行源码构建。
 
-rc.1 新增默认模型 `deepseek-flash`，支持图片和历史内系统消息更新。线上 settings 显式模型列表会覆盖内置目录，显式 `agent-default-model` 也不会因程序升级而切换。本次保留线上 `deepseek-v4.1-flash-expires-on-0910` 和完整 settings；旧实验模型与新正式模型在升级时均能请求，不代表实验模型名称中的到期日之后仍受服务商保证。若用户选择正式模型，应在保留其它条目的同时加入官方模型参数，并单独更新默认项，禁止整体覆盖其它 provider 或历史会话模型选择。
+rc.1 新增默认模型 `deepseek-flash`，支持图片和历史内系统消息更新。线上 settings 显式模型列表会覆盖内置目录，显式 `agent-default-model` 也不会因程序升级而切换。rc.1 部署当时保留线上 `deepseek-v4.1-flash-expires-on-0910` 和完整 settings；旧实验模型与新正式模型在升级时均能请求，不代表实验模型名称中的到期日之后仍受服务商保证。若用户选择正式模型，应在保留其它条目的同时加入官方模型参数，并单独更新默认项，禁止整体覆盖其它 provider 或历史会话模型选择。
 
 rc.1 切换前备份位于 `/home/ubuntu/dsh-backups/20260910-142508-pre-rc1`，前一 release 为 `20260910-alpha2-sidebar019`。本次没有新会话格式；两个版本具有相同 V3 与注入补丁。仍须先保留切换后新增数据再评估回退，不以格式相同替代备份。验收证据位于 `.artifacts/my43-rc1` 与远端 release 的 `rc1-*.json`；带凭据的 home、cookie 和启动日志不入库。
+
+## rc.2 标签选择与运行恢复边界
+
+2026-09-11 升级选择官方标签 `dsh-v0.1.5-rc.2` / `fb2c4b9e698e30edb738bca4cf0618587db7d203`。fork master 当时已包含标签外开发提交，即使 package.json 同为 rc.2 也不可等同正式发布。rc.2 标签仅回移评分弹窗、文件卡片与图标改动，核心注入、会话格式与鉴权源码未改；20个自用源码补丁与rc.1基线下的补丁完全一致。
+
+线上当前默认模型由用户改为 `deepseek-official/deepseek-v4-pro`、`low`，本次完整保留 settings 和 credentials。隔离真实请求按当前配置测六次工具调用与注入快照，不以昨天的实验模型配置覆盖今天的生产设置。三个外部插件及 node-pty 保持上一 release 的字节；265个内部包3733文件与本地正式打包产物一致，远端仅安装依赖。
+
+历史验证分两组：原9条旧格式样本的首次写入迁移和重开；当前生产会话快照中三个工作区各取3条近期会话进行读写回放。后者87个源文件保持不变；扫描仍明确报告原有5条不兼容日志，不删除未知字段绕过校验。证据保存在忽略目录 `.artifacts/my43-rc2` 和远端隔离 home `/home/ubuntu/dsh-canary/20260911-rc2`。
+
+会话恢复可能正常追加空 payload 的 `session/end-seed`；`Session` 构造器在恢复日志末尾不是该事件时写入，rc.1/rc.2 的逻辑相同。因此服务重启后的全文件哈希变化不必然表示旧历史被改写，必须保留快照并逐项核对原始压缩字节前缀、解压后的完整旧事件及新事件类型；不得无条件放行追加。本次首次切换因该标记触发严格校验并自动回退，确认只有一条正常标记后保留数据，再次切换通过原严格校验（89个数据文件不变）。恢复相关83项既有测试通过。
+
+当前一致备份 `/home/ubuntu/dsh-backups/20260911-012012-pre-rc2`，首次回退备份 `/home/ubuntu/dsh-backups/20260911-011756-pre-rc2`，旧 release `20260910-rc1-2c122992` 保留。服务配置、Caddy 与启动脚本哈希不变；web profile 三项依赖和链接均指向新 release。公网检查用 `Accept: text/html` 验证四个入口302至 `auth.zxh.tackd.net`；无HTML Accept的请求可能返回401并带登录Location，这是Authelia的内容协商，不应误判成浏览器认证故障。完整用户登录体验仍由页面人工验收确认。
