@@ -54,11 +54,11 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 确定性回归由 session、agent-loop、token-meter、历史格式迁移测试、`snapshots/sdk/request-injections` 与 Python SDK fixture 承担。Python fixture 使用真实 SDK、独立临时 home 和本地 HTTP 模型桩；通过 `PYTHONPATH=python/sdk/src <含 pydantic 的 Python> scripts/fixtures/request-injections-python.py --node <Node 绝对路径>` 执行。禁止将真实会话、密钥、启动令牌或完整生产配置加入提交。
 
-原始本地迁移与后续部署为独立验收阶段。用户已授权制品上传和服务切换，执行状态、产物与备份位置见当前任务文档；未推送 Git。
+原始本地迁移与后续部署为独立验收阶段。用户已授权制品上传、服务切换及 dev 的 commit/push，执行状态、产物与备份位置见当前任务文档。
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260910-alpha2-sidebar019`；核心仍为原 patched alpha.2，新增 Better Sidebar 适配。外部插件装在 release 内，web profile 的三项依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260910-rc1-2c122992`，核心为 patched `0.1.5-rc.1`，制品提交 `2c122992a9b5ba9ff5ca0c5ee23b05ae80c7c228`。外部插件装在 release 内，web profile 的三项依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -68,10 +68,18 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## Better Sidebar 原生右栏适配
 
-DSH alpha.2 搭配 `dsh-better-sidebar@0.19.0-alpha.1`，不要使用面向旧核心的 npm latest 0.18.x。该版本移除插件自绘右栏，将文件、终端等页面注册进官方右栏，并保留底部工作台。旧右栏布局不能承诺原样迁移；官方右栏标签刷新后的恢复能力也不等同于插件的 PTY 断线重连。
+DSH alpha.2 与 rc.1 已验证搭配 `dsh-better-sidebar@0.19.0-alpha.1`，不要使用面向旧核心的 npm latest 0.18.x。该版本移除插件自绘右栏，将文件、终端等页面注册进官方右栏，并保留底部工作台。旧右栏布局不能承诺原样迁移；官方右栏标签刷新后的恢复能力也不等同于插件的 PTY 断线重连。
 
 当前制品为 `0.19.0-alpha.1+my43.1`，补丁位于 `scripts/patches/my43-sidebar-alpha-download.patch`，同时包含 Host TypeScript 与发布 JS 的最小修改。官方交付文件可能携带相对路径，媒体/下载路由需先相对会话权威 cwd 解析，再执行原有 realpath 和工作区边界校验；不能改用浏览器传入的 cwd 覆盖会话目录。原版直接下载这种文件会返回 400。应用补丁后需单独将 package.json 版本设为上述构建标记再打包；重建 Host 时源码补丁仍有效。
 
 回归入口 `scripts/fixtures/my43-sidebar-download.mjs` 使用 Node 内置测试，参数依次为隔离实例启动日志、包含 sessionId 的 JSON 文件和工作区绝对路径。它只连接 loopback，独立创建并清理测试文件，验证相对/绝对路径、中文下载文件名、完整二进制字节、目录穿越、软链接越界与错误 Origin。终端另外验证真实输出、断连后的转录回放和 shell 变量保留。
 
 插件媒体路由自身按可信 Host/Origin 放行 loopback，请勿将它等同于核心 API cookie 鉴权。公网 `/sidebar/file` 和终端 WebSocket 继续经过既有 Caddy/Authelia；上线检查匿名媒体 URL 跳转登录页，不新增放行路径。升级备份在 `/home/ubuntu/dsh-backups/20260910-110047-pre-sidebar019`，包含一致 home 和原 profile；旧 release 保留。通常回退同时恢复 current 和 profile 链接，完整 home 快照仅在明确评估切换后新增数据后恢复。
+
+## rc.1 发布与模型配置约束
+
+发布制品必须在提交后执行 `pnpm run build:official`，再用 `pnpm run release:pack --family dsh --out <目录> --concurrency 4` 打包；普通 build 的开发标识或过期提交会被发布检查拒绝。不能改成 `pnpm exec tsx scripts/release/pack.ts`，其缺少 pack 子进程需要的 npm_execpath。内部包统一来自该提交，未变化的 vendor、原生包和外部插件可保留现有锁定安装；安装后校验 tarball 哈希、实际包文件及保留插件字节。远端 npm 安装禁用脚本并限制内存，不执行源码构建。
+
+rc.1 新增默认模型 `deepseek-flash`，支持图片和历史内系统消息更新。线上 settings 显式模型列表会覆盖内置目录，显式 `agent-default-model` 也不会因程序升级而切换。本次保留线上 `deepseek-v4.1-flash-expires-on-0910` 和完整 settings；旧实验模型与新正式模型在升级时均能请求，不代表实验模型名称中的到期日之后仍受服务商保证。若用户选择正式模型，应在保留其它条目的同时加入官方模型参数，并单独更新默认项，禁止整体覆盖其它 provider 或历史会话模型选择。
+
+rc.1 切换前备份位于 `/home/ubuntu/dsh-backups/20260910-142508-pre-rc1`，前一 release 为 `20260910-alpha2-sidebar019`。本次没有新会话格式；两个版本具有相同 V3 与注入补丁。仍须先保留切换后新增数据再评估回退，不以格式相同替代备份。验收证据位于 `.artifacts/my43-rc1` 与远端 release 的 `rc1-*.json`；带凭据的 home、cookie 和启动日志不入库。
