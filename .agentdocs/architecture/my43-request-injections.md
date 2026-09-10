@@ -58,10 +58,20 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260910-alpha2-1769db27`。外部插件装在 release 内，web profile 的三项依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260910-alpha2-sidebar019`；核心仍为原 patched alpha.2，新增 Better Sidebar 适配。外部插件装在 release 内，web profile 的三项依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
 命令行 `/usr/local/bin/dsh` 同样链接到 current 内的 CLI，避免旧的全局 0.1.2-rc.1 再次操作新版 home。旧 npm 全局安装保留，原链接作为 dsh-global-link 保存在本次切换前备份目录，deployment-state.json 记录前后目标。完整回滚还须恢复该入口；不要通过 npm 全局安装官方版覆盖本地补丁入口。
 
 浏览器 cookie 绑定 Host authority，包含端口；跨端口401不表示签名失效。真实 HTTP 验证自定义 Host 应使用 node:http 等能原样发送该头的客户端，不能假定 Node fetch 保留 Host 覆盖；同时区分请求 headers 与响应 headers。生产验收验证相同 authority 下旧 cookie 可复用、HTTPS Origin 与可信 Host 可访问 API，不可信 Origin 被拒绝。
+
+## Better Sidebar 原生右栏适配
+
+DSH alpha.2 搭配 `dsh-better-sidebar@0.19.0-alpha.1`，不要使用面向旧核心的 npm latest 0.18.x。该版本移除插件自绘右栏，将文件、终端等页面注册进官方右栏，并保留底部工作台。旧右栏布局不能承诺原样迁移；官方右栏标签刷新后的恢复能力也不等同于插件的 PTY 断线重连。
+
+当前制品为 `0.19.0-alpha.1+my43.1`，补丁位于 `scripts/patches/my43-sidebar-alpha-download.patch`，同时包含 Host TypeScript 与发布 JS 的最小修改。官方交付文件可能携带相对路径，媒体/下载路由需先相对会话权威 cwd 解析，再执行原有 realpath 和工作区边界校验；不能改用浏览器传入的 cwd 覆盖会话目录。原版直接下载这种文件会返回 400。应用补丁后需单独将 package.json 版本设为上述构建标记再打包；重建 Host 时源码补丁仍有效。
+
+回归入口 `scripts/fixtures/my43-sidebar-download.mjs` 使用 Node 内置测试，参数依次为隔离实例启动日志、包含 sessionId 的 JSON 文件和工作区绝对路径。它只连接 loopback，独立创建并清理测试文件，验证相对/绝对路径、中文下载文件名、完整二进制字节、目录穿越、软链接越界与错误 Origin。终端另外验证真实输出、断连后的转录回放和 shell 变量保留。
+
+插件媒体路由自身按可信 Host/Origin 放行 loopback，请勿将它等同于核心 API cookie 鉴权。公网 `/sidebar/file` 和终端 WebSocket 继续经过既有 Caddy/Authelia；上线检查匿名媒体 URL 跳转登录页，不新增放行路径。升级备份在 `/home/ubuntu/dsh-backups/20260910-110047-pre-sidebar019`，包含一致 home 和原 profile；旧 release 保留。通常回退同时恢复 current 和 profile 链接，完整 home 快照仅在明确评估切换后新增数据后恢复。

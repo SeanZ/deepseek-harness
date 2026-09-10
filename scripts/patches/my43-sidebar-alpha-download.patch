@@ -1,0 +1,12 @@
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -973 +973,2 @@
+-        const path = await ensureWorkspacePath(cwd, raw, fenceEnabledOf(() => settingsFace))
++        // 官方文件交付允许相对路径；按会话目录解析后继续执行原有真实路径与目录边界校验。
++        const path = await ensureWorkspacePath(cwd, isAbsolute(raw) ? raw : join(cwd, raw), fenceEnabledOf(() => settingsFace))
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -4977 +4977,2 @@
+-				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw, fenceEnabledOf(() => settingsFace));
++				const cwd = await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0);
++				const path = await ensureWorkspacePath(cwd, isAbsolute(raw) ? raw : join(cwd, raw), fenceEnabledOf(() => settingsFace));

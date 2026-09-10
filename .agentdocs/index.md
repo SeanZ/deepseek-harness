@@ -4,6 +4,8 @@
 
 ## 当前任务文档
 
+`workflow/260910-sidebar-alpha-upgrade.md` - Better Sidebar 原生右栏适配、下载与终端验收及插件部署回退。
+
 `workflow/260910-my43-alpha-upgrade.md` - my43 请求上下文补丁迁移到最新 alpha；修改请求组装、历史迁移或验证部署兼容性时读取。
 
 ## 项目约束
