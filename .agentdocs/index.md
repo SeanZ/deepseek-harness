@@ -9,3 +9,9 @@
 ## 项目约束
 
 仓库架构与测试要求以根目录 `AGENTS.md`、`docs/architecture.md`、`docs/testing.md` 和各目录指令为准。此目录记录本分支的实施约束与验收状态。
+
+## 长期分支约定
+
+`dev` 是自用补丁与 my43 制品的长期维护分支，推送到 `SeanZ/deepseek-harness` 的同名分支；原 `feature/my43-alpha-request-injections` 保留为本次迁移的阶段性记录。`dev` 同时保存核心请求注入改动与外部插件兼容补丁，插件补丁入口见架构文档。
+
+本地 `upstream` 指向官方仓库 `https://github.com/deepseek-ai/deepseek-harness.git`。当前基线为 `dsh-v0.1.5-alpha.2` / `b2e3b2a0125854567a4a5fcba75782e42fe84901`。后续跟进时先 fetch 并明确选定上游 tag 或提交，再合并到 dev，保留已推送的补丁历史；不直接用上游覆盖 dev。冲突解决后按变更范围运行核心、插件、历史迁移与构建检查，制品部署另做隔离验收和备份。分支同步本身不代表自动升级生产服务。
