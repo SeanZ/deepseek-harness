@@ -58,7 +58,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260911-rc2`，核心为 patched `0.1.5-rc.2`，制品提交 `56265e5f8c77cb6667c72ff4c2fe5ad108eb365f`。外部插件装在 release 内，web profile 的三项依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260915-alpha1`，核心为 patched `0.1.6-alpha.1`，制品提交 `fab89ae1d18de0712123cbb579bef61200d22c1f`。外部插件装在 release 内，web profile 的两项依赖（unrestricted、scheduled-tasks）与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -66,11 +66,11 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 浏览器 cookie 绑定 Host authority，包含端口；跨端口401不表示签名失效。真实 HTTP 验证自定义 Host 应使用 node:http 等能原样发送该头的客户端，不能假定 Node fetch 保留 Host 覆盖；同时区分请求 headers 与响应 headers。生产验收验证相同 authority 下旧 cookie 可复用、HTTPS Origin 与可信 Host 可访问 API，不可信 Origin 被拒绝。
 
-## Better Sidebar 原生右栏适配
+## 已停用的 Better Sidebar 兼容补丁
 
 DSH alpha.2、rc.1 与 rc.2 已验证搭配 `dsh-better-sidebar@0.19.0-alpha.1`，不要使用面向旧核心的 npm latest 0.18.x。该版本移除插件自绘右栏，将文件、终端等页面注册进官方右栏，并保留底部工作台。旧右栏布局不能承诺原样迁移；官方右栏标签刷新后的恢复能力也不等同于插件的 PTY 断线重连。
 
-当前制品为 `0.19.0-alpha.1+my43.1`，补丁位于 `scripts/patches/my43-sidebar-alpha-download.patch`，同时包含 Host TypeScript 与发布 JS 的最小修改。官方交付文件可能携带相对路径，媒体/下载路由需先相对会话权威 cwd 解析，再执行原有 realpath 和工作区边界校验；不能改用浏览器传入的 cwd 覆盖会话目录。原版直接下载这种文件会返回 400。应用补丁后需单独将 package.json 版本设为上述构建标记再打包；重建 Host 时源码补丁仍有效。
+停用前制品为 `0.19.0-alpha.1+my43.1`，补丁位于 `scripts/patches/my43-sidebar-alpha-download.patch`，同时包含 Host TypeScript 与发布 JS 的最小修改。官方交付文件可能携带相对路径，媒体/下载路由需先相对会话权威 cwd 解析，再执行原有 realpath 和工作区边界校验；不能改用浏览器传入的 cwd 覆盖会话目录。原版直接下载这种文件会返回 400。应用补丁后需单独将 package.json 版本设为上述构建标记再打包；重建 Host 时源码补丁仍有效。
 
 回归入口 `scripts/fixtures/my43-sidebar-download.mjs` 使用 Node 内置测试，参数依次为隔离实例启动日志、包含 sessionId 的 JSON 文件和工作区绝对路径。它只连接 loopback，独立创建并清理测试文件，验证相对/绝对路径、中文下载文件名、完整二进制字节、目录穿越、软链接越界与错误 Origin。终端另外验证真实输出、断连后的转录回放和 shell 变量保留。
 
@@ -94,4 +94,19 @@ rc.1 切换前备份位于 `/home/ubuntu/dsh-backups/20260910-142508-pre-rc1`，
 
 会话恢复可能正常追加空 payload 的 `session/end-seed`；`Session` 构造器在恢复日志末尾不是该事件时写入，rc.1/rc.2 的逻辑相同。因此服务重启后的全文件哈希变化不必然表示旧历史被改写，必须保留快照并逐项核对原始压缩字节前缀、解压后的完整旧事件及新事件类型；不得无条件放行追加。本次首次切换因该标记触发严格校验并自动回退，确认只有一条正常标记后保留数据，再次切换通过原严格校验（89个数据文件不变）。恢复相关83项既有测试通过。
 
-当前一致备份 `/home/ubuntu/dsh-backups/20260911-012012-pre-rc2`，首次回退备份 `/home/ubuntu/dsh-backups/20260911-011756-pre-rc2`，旧 release `20260910-rc1-2c122992` 保留。服务配置、Caddy 与启动脚本哈希不变；web profile 三项依赖和链接均指向新 release。公网检查用 `Accept: text/html` 验证四个入口302至 `auth.zxh.tackd.net`；无HTML Accept的请求可能返回401并带登录Location，这是Authelia的内容协商，不应误判成浏览器认证故障。完整用户登录体验仍由页面人工验收确认。
+rc.2 的一致备份 `/home/ubuntu/dsh-backups/20260911-012012-pre-rc2`，首次回退备份 `/home/ubuntu/dsh-backups/20260911-011756-pre-rc2`，旧 release `20260910-rc1-2c122992` 保留。服务配置、Caddy 与启动脚本哈希不变；web profile 三项依赖和链接均指向新 release。公网检查用 `Accept: text/html` 验证四个入口302至 `auth.zxh.tackd.net`；无HTML Accept的请求可能返回401并带登录Location，这是Authelia的内容协商，不应误判成浏览器认证故障。完整用户登录体验仍由页面人工验收确认。
+
+
+## 0.1.6-alpha.1 维护边界
+
+本次按用户选择从 web profile 卸载 Better Sidebar，原生文件预览和多终端接管；不删除旧release、补丁源码和历史设置。当前完整回退快照位于 `/home/ubuntu/dsh-backups/20260915-181822-pre-alpha1`，上一release为 `20260911-rc2`。安装/运行已验证，89个原有会话与配置文件哈希未变。Caddy、systemd及bootstrap脚本哈希不变，旧cookie可用，可信Origin通过，不可信Origin403；公网入口继续由Authelia保护。完整用户登录需用户页面验收，自动检查不替代密码/MFA登录。
+
+creative 与本标签 standard 的agent-plane保持一致，使用workflow-ptc，默认禁用Ralph；独立标识供unrestricted选择，不影响standard或默认排除的子Agent。请求循环以surface.contentGeneration判断图片投影变化，注入存在或切换时归一化系统提示；既有同步历史恢复调用暂留逐行弃用说明，新增功能不得照抄同步历史扫描。Session观察器分发抽离时保留collectSessionCallbacks在原文件，事件目录语义扫描才可识别生产方。
+
+DeepSeek默认协议为Messages，V4 Pro / Low在本地和Linux完整组合中均完成六次连续工具调用。web profile显式设置session-log-deepseek.enabled=false，避免新版默认开启自动会话日志上传；不改线上模型列表、凭据和访问模式。普通历史内消息注入仍不能替代request/injections。新增持久类型历史登记仅记录分支已有事件，不修改载荷或格式版本；保留旧未知字段日志的拒绝边界。
+
+本次vendor源码有上游变化，必须与285个DSH包一起本地重建打包；不能复用rc.2的vendor tarball。9个vendor、两个原生/插件tarball合计296包，Linux安装后4447文件逐字节核验。依赖锁文件保存在release内，npm不运行生命周期脚本；native-system继续使用Linux x64 0.1.2预编译，node-pty与unrestricted保留原发布包字节。安装内存峰值484.9MiB，无swap。
+
+完整测试使用已有Node24、Python3.12和Homebrew Git；系统Python3.9与旧Apple Git不满足新实验测试及禁止Git懒加载的验证。原生N-API构建用带headers的Node22，普通CLI和Linux运行也验证Node22。合并删除包后将无package.json的旧lib/node_modules目录移到忽略目录，避免全构建扫描误读旧文件。doc-sync会重建Host产物，须等待完成后再跑built-artifact测试。
+
+profile及共享profiles/node_modules由上游healProfilesModuleFallback在启动时修复；选用插件减少后会清除profile内对应受管fallback链接，但共享目录中上游已删除包的旧链接可能保留。此次核对目标包已不存在、链接确实指向上一release后，将code-runtime、code-runtime-worker-thread和workflow-worker-thread三个共享链接移入本次备份的retired-shared-links目录。部署仍必须核对所有解析后的链接，不能只看package.json或current。用户规定的.agentdocs需要保留部署提交标识，因此引用检查对此目录允许提交引用，普通文档和禁用组织链接检查保持原规则。

@@ -10,11 +10,11 @@
 - [x] 用户选择移除 Better Sidebar，开始实施。
 - [x] 合并正式 alpha.1 标签，迁移 creative 与请求注入，补充回归。
 - [x] 完成单元/集成/SDK/构建/隔离真实模型及原生侧栏验证。
-- [ ] 本地制品上传，Linux历史样本、模型、原生PTY与认证验收。
-- [ ] 一致备份，移除web profile的Better Sidebar并切换，提交推送dev。
+- [x] 本地制品上传，Linux历史样本、模型、原生PTY与认证验收。
+- [x] 一致备份，移除web profile的Better Sidebar并切换，提交推送dev。
 - [ ] 用户页面人工验收后归档。
 
-Planning Tool 未提供，以本文跟踪阶段。隔离源码工作树位于 `.artifacts/016-alpha1/source`，主 dev 已合并目标标签并迁移自用补丁，尚未提交及部署。官方标签相对rc.2包含550个非merge提交、3942个文件变化（包含生成物和版本号），不按小版本补丁处理。
+Planning Tool 未提供，以本文跟踪阶段。隔离源码工作树位于 `.artifacts/016-alpha1/source`，dev补丁提交fab89ae1d1已推送，生产已切换。官方标签相对rc.2包含550个非merge提交、3942个文件变化（包含生成物和版本号），不按小版本补丁处理。
 
 ## 侧栏取舍
 
@@ -47,13 +47,13 @@ npm当前latest为 `0.19.1`、alpha仍为 `0.19.0-alpha.1`；0.19.1文档的实�
 4. `session-log-deepseek.enabled` 的源码默认从false改为true，随官方请求增量发送完整规范会话事件（包含日志中的注入快照），不是只发模型messages；建议升级时显式false以保留现有未自动上传日志的行为，待用户决定是否启用。它与OTel反馈上传是两条独立路径。
 5. Session逻辑格式仍是V3，但新增image/offload及消息投影、fork行为，不能据版本号承诺旧二进制可读取所有新增日志。沿用三工作区近期样本、旧迁移副本、注入重建与完整备份；不修改此前5条未知字段不兼容历史。
 6. `agent/session-start` 变为异步串行 `agent/created`，插件生命周期及PTC改名需逐项审计。现有unrestricted节点只监听自用request-injections事件，不直接命中此次生命周期改名，但依赖核心补丁先迁好。scheduled-tasks静态搜索未命中此次旧事件名，仍须完整安装/运行验证，不能只看peer范围。
-7. 原生终端使用现有Remote控制及流式传输，由session的subprocess/sandbox提供PTY；不应新增Caddy匿名放行路径。插件自己的 `/sidebar/file`、`/sidebar/ws/terminal` 仍需Authelia保护。此次仅核对源码与生产版本，没有宣称新版已通过真实登录/终端线上验收。
+7. 原生终端使用现有Remote控制及流式传输，由session的subprocess/sandbox提供PTY；不应新增Caddy匿名放行路径。插件自己的 `/sidebar/file`、`/sidebar/ws/terminal` 仍需Authelia保护。初步评估只核对源码，后续独立实例终端与公网认证检查结果见下文；完整个人登录仍留待用户验收。
 
 ## 验证与证据边界
 
 已完成fetch、官方release阅读、标签源码对比、三项线上插件及默认模型只读核验、无工作树改写的merge-tree、creative包引用扫描、真实侧栏注册器探针和0.19.1发布包源码检查。探针使用现有兼容依赖加载目标注册器，不是新版完整构建。
 
-忽略目录 `.artifacts/016-alpha1` 保存源码工作树、changed-files、commits、merge-check、registry-probe与结果、最新插件元数据及发布包。已完成alpha.1本地构建、浏览器挂载与真实模型请求；生产仍为rc.2。后续实施按既有[my43运行约束](../architecture/my43-request-injections.md)执行，先独立home/端口，本地构建，再限内存安装制品。
+忽略目录 `.artifacts/016-alpha1` 保存源码工作树、changed-files、commits、merge-check、registry-probe与结果、最新插件元数据及发布包。已完成alpha.1本地构建、浏览器挂载与真实模型请求；生产已切换alpha.1。后续实施按既有[my43运行约束](../architecture/my43-request-injections.md)执行，先独立home/端口，本地构建，再限内存安装制品。
 
 实施约束：模型保持V4 Pro / Low；先验证新版Messages和注入组合，失败则修复或显式保留chat-completions。profile叠加session-log-deepseek.enabled=false，保持原有不自动上传日志行为。所有构建在本地进行；先独立home/端口验证，通过后才停服备份、移除插件加载并切换。
 
@@ -71,3 +71,9 @@ Session 原有观察器异常隔离抽到 event-observers，保留本地 collect
 完整测试首次遇到系统Python3.9、旧Git不支持禁止懒加载、Node22实验fixture钩子兼容及已删除包残留lib。复测使用已有Node24、Python3.12和Homebrew Git；旧构建目录移到忽略目录retired-builds。一个上游实验测试夹具缺少新增可选ctx.get，补齐空注册器并复测，生产逻辑不改。构建原生N-API模块仍用带headers的Node22。构建制品测试必须在doc-sync的Host重建完成后执行，避免入口短暂移除导致伪失败。
 
 本地验收结果：完整Vitest为1388文件、24311用例通过，13文件/135用例按上游条件跳过，1项既定预期失败；Node22构建制品集成为29项通过；TypeScript SDK录制回放1项、Python SDK端到端和unrestricted10项通过；doc-sync41项通过，lint通过。仓库hygiene中15项通过，剩余constraints仅报两处无package.json的旧构建目录，已与其他旧产物一起隔离，针对性复查后提交。
+
+Linux制品包含285个DSH包、9个vendor包和2个保留原生/插件包，共296包4447文件逐字节核对。依赖安装仅npm、禁用脚本、内存上限1200MiB；实际峰值484.9MiB，无swap。Linux文件锁、koffi、PTY、ripgrep正常，Landlock仍为主机内核已有partial能力。9条旧样本和9条近期样本全部回放通过，73/87个源文件哈希不变；原有5条不兼容日志仍报告并保留。隔离完整插件组合中tasks列表可读，creative七步/六工具完成，注入快照一份。生产切换前preflight显示75会话、无运行中会话；公网根、bootstrap、原生终端API、unrestricted API及旧插件路径均由Authelia拦截。
+
+生产切换成功：release为20260915-alpha1，制品提交fab89ae1d1；一致备份20260915-181822-pre-alpha1。systemd active/running、NRestarts=0；89个原文件未变，没有需要放行的恢复标记。Better Sidebar已从profile依赖、bundle和链接移除，自动会话上传显式false；默认模型和服务/认证配置未变。Linux浏览器原生终端输出NATIVE_PTY_linux，刷新后粘贴命令输出RECONNECT_linux。逐字自动输入经SSH隧道会因上游逐次RPC排队而较慢，粘贴可整批提交；本次没有修改原生终端队列。公网浏览器停在Authelia登录页，完整个人登录验收留给用户。两个隔离服务及SSH隧道均已停止，保留测试数据用于复核。
+
+上线链接复查发现共享profiles/node_modules仍有三个指向rc.2的已删除包链接。确认新release不含这些包后，将链接与目标清单移入一致备份下retired-shared-links；不删除旧release。再次检查75会话、无运行中会话、注入协议2、旧cookie和Origin边界均正常，服务未额外重启。
