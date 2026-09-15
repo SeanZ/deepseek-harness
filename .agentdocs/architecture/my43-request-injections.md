@@ -58,7 +58,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260915-alpha1`，核心为 patched `0.1.6-alpha.1`，制品提交 `fab89ae1d18de0712123cbb579bef61200d22c1f`。外部插件装在 release 内，web profile 的两项依赖（unrestricted、scheduled-tasks）与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260915-alpha1-prompt-fix`，核心为 patched `0.1.6-alpha.1`，制品提交 `194d2b5603c0067ce9a89b44feeb288a55af1ce1`。外部插件装在 release 内，web profile 的两项依赖（unrestricted、scheduled-tasks）与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -99,14 +99,14 @@ rc.2 的一致备份 `/home/ubuntu/dsh-backups/20260911-012012-pre-rc2`，首次
 
 ## 0.1.6-alpha.1 维护边界
 
-本次按用户选择从 web profile 卸载 Better Sidebar，原生文件预览和多终端接管；不删除旧release、补丁源码和历史设置。当前完整回退快照位于 `/home/ubuntu/dsh-backups/20260915-181822-pre-alpha1`，上一release为 `20260911-rc2`。安装/运行已验证，89个原有会话与配置文件哈希未变。Caddy、systemd及bootstrap脚本哈希不变，旧cookie可用，可信Origin通过，不可信Origin403；公网入口继续由Authelia保护。完整用户登录需用户页面验收，自动检查不替代密码/MFA登录。
+本次按用户选择从 web profile 卸载 Better Sidebar，原生文件预览和多终端接管；不删除旧release、补丁源码和历史设置。当前完整回退快照位于 `/home/ubuntu/dsh-backups/20260915-205844-pre-prompt-fix`，上一release为 `20260915-alpha1`；首次alpha.1快照20260915-181822-pre-alpha1和rc.2 release仍保留。切换即时校验91个数据文件哈希未变；稍后反馈会话恢复追加1条空载荷session/end-seed，其旧压缩字节、全文和事件前缀均保持不变。Caddy、systemd及bootstrap脚本哈希不变，旧cookie可用，可信Origin通过，不可信Origin403；公网入口继续由Authelia保护。完整用户登录需用户页面验收，自动检查不替代密码/MFA登录。
 
 creative 与本标签 standard 的agent-plane保持一致，使用workflow-ptc，默认禁用Ralph；独立标识供unrestricted选择，不影响standard或默认排除的子Agent。请求循环以surface.contentGeneration判断图片投影变化，注入存在时禁用历史内系统更新，将提示词归一化到头部；稳定注入延续同一请求段，不能因非空就每步记录series，否则Chat会重复展示系统提示卡片。注入快照实际切换仍开启新请求段；既有同步历史恢复调用暂留逐行弃用说明，新增功能不得照抄同步历史扫描。Session观察器分发抽离时保留collectSessionCallbacks在原文件，事件目录语义扫描才可识别生产方。
 
 DeepSeek默认协议为Messages，V4 Pro / Low在本地和Linux完整组合中均完成六次连续工具调用。web profile显式设置session-log-deepseek.enabled=false，避免新版默认开启自动会话日志上传；不改线上模型列表、凭据和访问模式。普通历史内消息注入仍不能替代request/injections。新增持久类型历史登记仅记录分支已有事件，不修改载荷或格式版本；保留旧未知字段日志的拒绝边界。
 
-本次vendor源码有上游变化，必须与285个DSH包一起本地重建打包；不能复用rc.2的vendor tarball。9个vendor、两个原生/插件tarball合计296包，Linux安装后4447文件逐字节核验。依赖锁文件保存在release内，npm不运行生命周期脚本；native-system继续使用Linux x64 0.1.2预编译，node-pty与unrestricted保留原发布包字节。安装内存峰值484.9MiB，无swap。
+首次alpha.1升级包含vendor源码变化，必须与285个DSH包一起本地重建打包；不能复用rc.2的vendor tarball。后续局部修复可沿用未变的alpha.1 vendor制品。9个vendor、两个原生/插件tarball合计296包，Linux安装后4447文件逐字节核验。依赖锁文件保存在release内，npm不运行生命周期脚本；native-system继续使用Linux x64 0.1.2预编译，node-pty与unrestricted保留原发布包字节。首次alpha.1安装内存峰值484.9MiB，无swap。
 
 完整测试使用已有Node24、Python3.12和Homebrew Git；系统Python3.9与旧Apple Git不满足新实验测试及禁止Git懒加载的验证。原生N-API构建用带headers的Node22，普通CLI和Linux运行也验证Node22。合并删除包后将无package.json的旧lib/node_modules目录移到忽略目录，避免全构建扫描误读旧文件。doc-sync会重建Host产物，须等待完成后再跑built-artifact测试。
 
-profile及共享profiles/node_modules由上游healProfilesModuleFallback在启动时修复；选用插件减少后会清除profile内对应受管fallback链接，但共享目录中上游已删除包的旧链接可能保留。此次核对目标包已不存在、链接确实指向上一release后，将code-runtime、code-runtime-worker-thread和workflow-worker-thread三个共享链接移入本次备份的retired-shared-links目录。部署仍必须核对所有解析后的链接，不能只看package.json或current。用户规定的.agentdocs需要保留部署提交标识，因此引用检查对此目录允许提交引用，普通文档和禁用组织链接检查保持原规则。
+profile及共享profiles/node_modules由上游healProfilesModuleFallback在启动时修复；选用插件减少后会清除profile内对应受管fallback链接，但共享目录中上游已删除包的旧链接可能保留。首次alpha.1升级时核对目标包已不存在、链接确实指向上一release后，将code-runtime、code-runtime-worker-thread和workflow-worker-thread三个共享链接移入20260915-181822-pre-alpha1备份的retired-shared-links目录。部署仍必须核对所有解析后的链接，不能只看package.json或current。用户规定的.agentdocs需要保留部署提交标识，因此引用检查对此目录允许提交引用，普通文档和禁用组织链接检查保持原规则。
