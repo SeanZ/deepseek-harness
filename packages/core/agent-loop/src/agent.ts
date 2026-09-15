@@ -366,9 +366,10 @@ export class ReactLoopAgent implements Agent {
     while (true) {
       const { config, preparedCall, injections } = await this.prepareRequest(turn, step, signal)
       const injectionsChanged = !requestMessageInjectionsEqual(this.requestInjections, injections)
-      const startsRequestSeries = (firstAttempt && decision.startsRequestSeries === true) || injectionsChanged || injections.length > 0
+      const startsRequestSeries = (firstAttempt && decision.startsRequestSeries === true) || injectionsChanged
       const commits = this.systemPrompt.project(renderedPrompt, {
-        inHistory: preparedCall?.systemPromptUpdate === 'in-history',
+        // 注入要求系统提示保留在头部，但稳定注入不会让每次工具续传都开启新请求段。
+        inHistory: preparedCall?.systemPromptUpdate === 'in-history' && injections.length === 0,
         startsSeries: startsRequestSeries
           || this.requestSurfaceGeneration !== this.session.surface.contentGeneration
           || this.toolsChanged(assembly.tools),

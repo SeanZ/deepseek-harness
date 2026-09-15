@@ -101,7 +101,7 @@ rc.2 的一致备份 `/home/ubuntu/dsh-backups/20260911-012012-pre-rc2`，首次
 
 本次按用户选择从 web profile 卸载 Better Sidebar，原生文件预览和多终端接管；不删除旧release、补丁源码和历史设置。当前完整回退快照位于 `/home/ubuntu/dsh-backups/20260915-181822-pre-alpha1`，上一release为 `20260911-rc2`。安装/运行已验证，89个原有会话与配置文件哈希未变。Caddy、systemd及bootstrap脚本哈希不变，旧cookie可用，可信Origin通过，不可信Origin403；公网入口继续由Authelia保护。完整用户登录需用户页面验收，自动检查不替代密码/MFA登录。
 
-creative 与本标签 standard 的agent-plane保持一致，使用workflow-ptc，默认禁用Ralph；独立标识供unrestricted选择，不影响standard或默认排除的子Agent。请求循环以surface.contentGeneration判断图片投影变化，注入存在或切换时归一化系统提示；既有同步历史恢复调用暂留逐行弃用说明，新增功能不得照抄同步历史扫描。Session观察器分发抽离时保留collectSessionCallbacks在原文件，事件目录语义扫描才可识别生产方。
+creative 与本标签 standard 的agent-plane保持一致，使用workflow-ptc，默认禁用Ralph；独立标识供unrestricted选择，不影响standard或默认排除的子Agent。请求循环以surface.contentGeneration判断图片投影变化，注入存在时禁用历史内系统更新，将提示词归一化到头部；稳定注入延续同一请求段，不能因非空就每步记录series，否则Chat会重复展示系统提示卡片。注入快照实际切换仍开启新请求段；既有同步历史恢复调用暂留逐行弃用说明，新增功能不得照抄同步历史扫描。Session观察器分发抽离时保留collectSessionCallbacks在原文件，事件目录语义扫描才可识别生产方。
 
 DeepSeek默认协议为Messages，V4 Pro / Low在本地和Linux完整组合中均完成六次连续工具调用。web profile显式设置session-log-deepseek.enabled=false，避免新版默认开启自动会话日志上传；不改线上模型列表、凭据和访问模式。普通历史内消息注入仍不能替代request/injections。新增持久类型历史登记仅记录分支已有事件，不修改载荷或格式版本；保留旧未知字段日志的拒绝边界。
 

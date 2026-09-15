@@ -77,3 +77,15 @@ Linux制品包含285个DSH包、9个vendor包和2个保留原生/插件包，共
 生产切换成功：release为20260915-alpha1，制品提交fab89ae1d1；一致备份20260915-181822-pre-alpha1。systemd active/running、NRestarts=0；89个原文件未变，没有需要放行的恢复标记。Better Sidebar已从profile依赖、bundle和链接移除，自动会话上传显式false；默认模型和服务/认证配置未变。Linux浏览器原生终端输出NATIVE_PTY_linux，刷新后粘贴命令输出RECONNECT_linux。逐字自动输入经SSH隧道会因上游逐次RPC排队而较慢，粘贴可整批提交；本次没有修改原生终端队列。公网浏览器停在Authelia登录页，完整个人登录验收留给用户。两个隔离服务及SSH隧道均已停止，保留测试数据用于复核。
 
 上线链接复查发现共享profiles/node_modules仍有三个指向rc.2的已删除包链接。确认新release不含这些包后，将链接与目标清单移入一致备份下retired-shared-links；不删除旧release。再次检查75会话、无运行中会话、注入协议2、旧cookie和Origin边界均正常，服务未额外重启。
+
+
+## System prompt 重复卡片回归
+
+用户实测会话尾号84e60464在18步内只有1个system/message和1个request/injections，却有1个initial和17个series请求头。根因是注入非空直接触发startsRequestSeries，官方Chat按每个series请求头显示完整系统提示。修复将提示词归一化与请求段开始分开，保留注入变化、真正的提示词替换与工具变化的记录。不得改写用户历史日志来隐藏展示问题。
+
+- [x] 只读复制实际会话并核对事件，确定重复请求段原因。
+- [x] 增补稳定注入与注入切换的多工具回归，确认旧实现失败、新实现通过。
+- [x] SDK及真实隔离请求和页面验收，验证正常续传不再产生重复卡片。
+- [ ] 提交推送并在无运行会话时部署修复，保留原始日志和回退制品。
+
+回归证据位于忽略目录.artifacts/016-alpha1/prompt-regression。旧实现有3个新增断言失败，修复后7文件127项通过；TypeScript SDK既有快照通过，Python SDK连续三轮仅记录initial请求头；真实V4 Pro/Low六工具七请求仅1份系统提示、1份注入快照、1个请求头。浏览器验证工具收起及页面刷新后均只有1张系统提示卡片。旧会话的多余series仍是原始日志的一部分，本次不改变Chat对合法series的展示语义。

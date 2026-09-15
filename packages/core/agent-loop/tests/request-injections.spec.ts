@@ -74,6 +74,39 @@ describe('持久请求注入', () => {
     }
     expect(agent.session.deriveMessages().some(message => message.id === 'request-injection:guidance')).toBe(false)
     expect(agent.session.snapshotEvents().filter(event => event.type === 'request/injections')).toHaveLength(1)
+    expect(agent.session.snapshotEvents().filter(event => event.type === 'request/header')
+      .map(event => event.data.reason)).toEqual(['initial', 'change'])
+  })
+
+  it.each([false, true])('连续六次工具调用只在注入实际改变时开始新请求段（切换=%s）', async (changes) => {
+    const adapter = new MockAdapter([
+      ...Array.from({ length: 6 }, (_, i) => toolCallResponse(`stable-${i}`, 'echo', { text: String(i) })),
+      textResponse('完成'), textResponse('继续完成'),
+    ])
+    adapter.systemPromptUpdate = 'in-history'
+    const ctx = await mount(adapter)
+    ctx.tools.register(defineContentToolFixture({
+      name: 'echo', description: '测试工具', parameters: { text: { type: 'string' } },
+      async execute(args) { return [{ type: 'text', text: String(args.text) }] },
+    }))
+    let calls = 0
+    ctx.on('agent/request-injections', async (_payload, next) => [
+      ...await next(), contribution(changes && calls++ >= 3 ? '更新的上下文' : '原始上下文'),
+    ])
+    const agent = await ctx.agentLoop.create(SessionId(`stable-${changes}`), { provider: 'mock', model: 'mock' })
+    await turn(ctx, agent, '连续调用六次工具')
+    await turn(ctx, agent, '沿用上下文继续')
+    expect(adapter.requests).toHaveLength(8)
+    const events = agent.session.snapshotEvents()
+    expect(events.filter(event => event.type === 'request/header').map(event => event.data.reason))
+      .toEqual(changes ? ['initial', 'series'] : ['initial'])
+    expect(events.filter(event => event.type === 'system/message')).toHaveLength(1)
+    expect(events.filter(event => event.type === 'request/injections')).toHaveLength(changes ? 2 : 1)
+    expect(events.filter(event => event.type === 'tool/result')).toHaveLength(6)
+    for (const request of adapter.requests) {
+      expect(request.messages.filter(message => message.role === 'system')).toEqual([request.messages[0]])
+      expect(request.messages.filter(message => message.id === 'request-injection:guidance')).toHaveLength(1)
+    }
   })
 
   it('支持历史内系统更新的模型在注入存在时归一化系统提示，避免无效的 Messages 位置', async () => {

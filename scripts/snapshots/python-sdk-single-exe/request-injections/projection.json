@@ -27,6 +27,7 @@
       ]
     }
   ],
+  "requestHeaders": [["initial"], [], []],
   "assistantOutputs": [
     [
       {
