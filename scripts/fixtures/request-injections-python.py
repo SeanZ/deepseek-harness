@@ -46,6 +46,8 @@ def main() -> None:
                 {'id': 'skill-filesystem', 'config': {'includeDefaultRoots': False}},
                 {'id': 'session-persistence-jsonl', 'config': {'root': str(root / 'sessions'), 'compression': 'none'}},
                 {'id': 'session-telemetry-otel', 'disabled': True},
+                {'id': 'session-log-deepseek', 'config': {'enabled': False}},
+                {'id': 'llm-deepseek', 'config': {'protocol': 'chat-completions'}},
                 {'insert': [{'id': 'test-injections', 'name': str(repo / 'snapshots/sdk/request-injections/injection-producer.mjs')}]},
             ]))
             env = {

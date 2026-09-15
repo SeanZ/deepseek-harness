@@ -4,6 +4,8 @@
 
 ## 当前任务文档
 
+`workflow/260915-my43-016-alpha1-assessment.md` - 0.1.6-alpha.1 补丁迁移、creative与原生侧栏验收、制品部署约束。
+
 `workflow/260911-my43-rc2-upgrade.md` - 官方 rc.2 标签与 master 的范围区别、构建验收和生产升级。
 
 `workflow/260910-my43-rc1-upgrade.md` - rc.1 合并、默认模型风险、隔离验证与生产切换。

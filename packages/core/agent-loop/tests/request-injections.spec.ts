@@ -76,6 +76,27 @@ describe('持久请求注入', () => {
     expect(agent.session.snapshotEvents().filter(event => event.type === 'request/injections')).toHaveLength(1)
   })
 
+  it('支持历史内系统更新的模型在注入存在时归一化系统提示，避免无效的 Messages 位置', async () => {
+    const adapter = new MockAdapter([textResponse('first'), textResponse('second'), textResponse('third')])
+    adapter.systemPromptUpdate = 'in-history'
+    const ctx = await mount(adapter)
+    let enabled = true
+    ctx.on('agent/request-injections', async (_payload, next) => [...await next(), ...enabled ? [contribution()] : []])
+    const agent = await ctx.agentLoop.create(SessionId('system-update'), { provider: 'mock', model: 'mock' })
+    await turn(ctx, agent, '第一轮')
+    ctx.systemPrompt.section({ name: 'changed', order: 2, text: '新增系统约束' })
+    await turn(ctx, agent, '第二轮')
+    enabled = false
+    await turn(ctx, agent, '第三轮')
+    expect(adapter.requests).toHaveLength(3)
+    for (const request of adapter.requests) {
+      expect(request.messages.filter(message => message.role === 'system')).toEqual([request.messages[0]])
+    }
+    expect(adapter.requests[1]?.messages[0]?.content).toContainEqual({ type: 'text', text: expect.stringContaining('新增系统约束') as unknown })
+    expect(adapter.requests[1]?.messages.at(-2)?.id).toBe('request-injection:guidance')
+    expect(adapter.requests[2]?.messages.some(message => message.id === 'request-injection:guidance')).toBe(false)
+  })
+
   it('重试重新读取声明并清空旧快照，用户输入只提交一次', async () => {
     const adapter = new MockAdapter([
       () => { throw new LlmError('重试测试', 'CONTEXT_LENGTH') }, textResponse('重试完成'),

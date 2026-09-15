@@ -303,6 +303,8 @@ const archive = async (): Promise<Uint8Array> =>
       parent: { tree },
     }
     inventory.apply({
+      // 新版 inventory 可选读取 pluginPackages；此夹具只提供 Loader 元数据。
+      get: () => undefined,
       baseUrl,
       loader: tree,
       deepseekLlmApiExtensions: {
