@@ -4,6 +4,9 @@
 
 ## 当前任务文档
 
+`workflow/260918-my43-016-alpha2-assessment.md` - alpha.2 标签审计、unrestricted 设置插槽迁移、creative 差异、手机问题与历史回退/Office资源边界；实施下一次升级前读取。
+
+
 `workflow/260915-my43-016-alpha1-assessment.md` - 0.1.6-alpha.1 补丁迁移、creative与原生侧栏验收、制品部署约束。
 
 `workflow/260911-my43-rc2-upgrade.md` - 官方 rc.2 标签与 master 的范围区别、构建验收和生产升级。

@@ -2,9 +2,9 @@
 
 ## 补丁边界
 
-当前分支以官方 `dsh-v0.1.5-rc.2` 为基线，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
+当前维护目标为官方 `dsh-v0.1.6-alpha.2`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
 
-`request/injections` 是 required 持久事件，不属于聊天历史节点。发送前记录、按日志重建；重试重新读取声明，准备阶段取消不提交用户输入或注入。存在注入或快照改变时开始新请求序列，让 alpha 的系统消息策略与可能发生位置变化的请求一致；因此不能承诺跨请求前缀缓存连续性。token-meter 将注入计入请求占用，单独保留历史节点计量；声明变化使旧 usage 锚点失效。
+`request/injections` 是 required 持久事件，不属于聊天历史节点。发送前记录、按日志重建；重试重新读取声明，准备阶段取消不提交用户输入或注入。稳定注入保持同一请求序列；快照改变时开始新请求序列，让 alpha 的系统消息策略与可能发生位置变化的请求一致；因此不能承诺跨请求前缀缓存连续性。token-meter 将注入计入请求占用，单独保留历史节点计量；声明变化使旧 usage 锚点失效。
 
 `creative` 使用当前 standard 的完整组合，独立标识用于外部插件选择，不自行提供注入文本。两者解析后相等由测试锁定。alpha 不提供 preset 继承，因此维护 standard 时需同步 creative。`dsh-unrestricted` 0.3.0 的主机逻辑和六次真实工具调用已验证。其旧独立 RPC 状态入口在 alpha 返回 HTTP 405；[兼容补丁](../../scripts/patches/my43-unrestricted-alpha.patch) 将主机和客户端状态读取迁到共享 `/api/unrestricted/status`，浏览器显示已开启且无操作错误，插件测试验证状态随设置变化。它不修改注入文本。首次核心隔离验证未包含旧 `dsh-context`、sidebar 与 scheduled-tasks；后续完整插件验收与当前安装状态见下文。旧 context 已按授权移除。
 
@@ -110,3 +110,11 @@ DeepSeek默认协议为Messages，V4 Pro / Low在本地和Linux完整组合中�
 完整测试使用已有Node24、Python3.12和Homebrew Git；系统Python3.9与旧Apple Git不满足新实验测试及禁止Git懒加载的验证。原生N-API构建用带headers的Node22，普通CLI和Linux运行也验证Node22。合并删除包后将无package.json的旧lib/node_modules目录移到忽略目录，避免全构建扫描误读旧文件。doc-sync会重建Host产物，须等待完成后再跑built-artifact测试。
 
 profile及共享profiles/node_modules由上游healProfilesModuleFallback在启动时修复；选用插件减少后会清除profile内对应受管fallback链接，但共享目录中上游已删除包的旧链接可能保留。首次alpha.1升级时核对目标包已不存在、链接确实指向上一release后，将code-runtime、code-runtime-worker-thread和workflow-worker-thread三个共享链接移入20260915-181822-pre-alpha1备份的retired-shared-links目录。部署仍必须核对所有解析后的链接，不能只看package.json或current。用户规定的.agentdocs需要保留部署提交标识，因此引用检查对此目录允许提交引用，普通文档和禁用组织链接检查保持原规则。
+
+## 0.1.6-alpha.2 插件适配
+
+`my43-unrestricted-alpha2.patch` 以当前线上已打共享API补丁的0.3.0安装副本为基线，迁移设置卡片到 `plugins.bundle.config`、key为 `dsh-unrestricted`，版本标记0.3.0+my43.alpha2。不改变注入文本、主机注入协议和路由。该补丁不可直接套到最初的原版0.3.0；先应用旧alpha补丁，或使用已核验的线上安装副本。应用前执行git apply --unidiff-zero --check，部署前重新核对制品哈希。
+
+新补丁包括客户端源码、bundle/map与Node测试；测试直接加载交付JS，覆盖新插槽、默认展开、状态读写和卸载后的迟到请求。配置写入后立即刷新状态，移除固定延迟；样式和订阅由插件生命周期回收。旧bundle作为负对照因旧插槽失败。插件必须在与目标DSH一致的类型声明下构建和检查，不发布本地路径tsconfig或node_modules。
+
+alpha2的standard新增默认关闭的tool-plugin-manager声明，creative必须同步但保持disabled:true。官方Creator/cordis并非自用creative，不能套用其默认安装权限。alpha2 runtime依赖解析及HMR需要实际组合验收，不将目录软链接存在等同加载成功。

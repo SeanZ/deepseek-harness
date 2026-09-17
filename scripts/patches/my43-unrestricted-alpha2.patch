@@ -1,0 +1,438 @@
+diff --git a/lib/client.js b/lib/client.js
+index 4b4b973c0a..6f44fc8dda 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -22,0 +23,2 @@ window.__ModuleLoader__.load({
++			let disposed = false;
++			let refreshVersion = 0;
+@@ -23,0 +26,5 @@ window.__ModuleLoader__.load({
++			ctx.effect(() => () => {
++				disposed = true;
++				refreshVersion++;
++				listeners.clear();
++			}, "dsh-unrestricted: controller lifecycle");
+@@ -31,0 +39 @@ window.__ModuleLoader__.load({
++				if (disposed) return;
+@@ -49,0 +58,2 @@ window.__ModuleLoader__.load({
++				if (disposed) return;
++				const version = ++refreshVersion;
+@@ -50,0 +61,2 @@ window.__ModuleLoader__.load({
++					const status = await call("status");
++					if (disposed || version !== refreshVersion) return;
+@@ -53 +65 @@ window.__ModuleLoader__.load({
+-						status: await call("status"),
++						status,
+@@ -56,0 +69 @@ window.__ModuleLoader__.load({
++					if (disposed || version !== refreshVersion) return;
+@@ -64,0 +78 @@ window.__ModuleLoader__.load({
++				if (disposed) return;
+@@ -67 +81 @@ window.__ModuleLoader__.load({
+-				setTimeout(() => void refresh(), 300);
++				await refresh();
+@@ -377,2 +391,2 @@ window.__ModuleLoader__.load({
+-			if (typeof document === "undefined") return;
+-			if (document.querySelector("style[data-plugin=\"dsh-unrestricted\"]") !== null) return;
++			if (typeof document === "undefined") return () => {};
++			if (document.querySelector("style[data-plugin=\"dsh-unrestricted\"]") !== null) return () => {};
+@@ -382,0 +397 @@ window.__ModuleLoader__.load({
++			return () => tag.remove();
+@@ -396,0 +412 @@ window.__ModuleLoader__.load({
++				open: true,
+@@ -494 +510 @@ window.__ModuleLoader__.load({
+-			ensureStyles();
++			ctx.effect(ensureStyles, "dsh-unrestricted: stylesheet");
+@@ -500,3 +516,3 @@ window.__ModuleLoader__.load({
+-			ctx.slots.inject("settings.plugin.item", () => ctx.slots.register({
+-				name: "settings.plugin.item",
+-				key: "unrestricted",
++			ctx.slots.inject("plugins.bundle.config", () => ctx.slots.register({
++				name: "plugins.bundle.config",
++				key: "dsh-unrestricted",
+diff --git a/lib/client.js.map b/lib/client.js.map
+index d95714eb3b..bdd7f07ce7 100644
+--- a/lib/client.js.map
++++ b/lib/client.js.map
+@@ -1 +1 @@
+-{"version":3,"file":"client.js","names":[],"sources":["../src/client/controller.ts","../src/client/locales.ts","../src/client/styles.ts","../src/client/UnrestrictedCard.tsx","../src/client/index.tsx"],"sourcesContent":["/** Browser controller for the preset-scoped creative-injection settings card. */\nimport type { Context } from '@deepseek-ai/cordis'\nimport type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'\nimport type {} from '@deepseek-ai/dsh-api-remotes/client'\nimport type {} from '@deepseek-ai/dsh-client-ui-settings/client'\n\nexport interface UnrestrictedSettings {\n  enabled?: boolean\n  targetPresets?: string[]\n  includeSubagents?: boolean\n}\n\nexport interface UnrestrictedStatus {\n  compatible: boolean\n  requestInjectionsVersion: number\n  enabled: boolean\n  targetPresets: string[]\n  includeSubagents: boolean\n}\n\nexport interface UnrestrictedViewSnapshot {\n  enabled: boolean\n  targetPresets: string[]\n  includeSubagents: boolean\n  writable: boolean\n  settingsStatus: 'loading' | 'ready' | 'unavailable'\n  status: UnrestrictedStatus | null\n  message?: string\n}\n\ntype RpcResult<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } }\n\nexport interface UnrestrictedViewSource {\n  getSnapshot(): UnrestrictedViewSnapshot\n  subscribe(listener: () => void): () => void\n}\n\nexport interface UnrestrictedCardInjected {\n  hooks: { view: UnrestrictedViewSource }\n  setEnabled: (enabled: boolean) => Promise<void>\n  setTargetPresets: (targetPresets: string[]) => Promise<void>\n  setIncludeSubagents: (includeSubagents: boolean) => Promise<void>\n  refresh: () => Promise<void>\n}\n\nconst RPC_CHANNEL = '/api'\nconst SETTINGS_NS = 'unrestricted'\n\nconst messageOf = (error: unknown): string => error instanceof Error ? error.message : String(error)\n\nexport function createUnrestrictedController(ctx: Context) {\n  const connection = ctx.get('connection') as ConnectionHandle\n  const settings = ctx.settingsScope.bind<UnrestrictedSettings>({ namespace: SETTINGS_NS })\n  let snapshot: UnrestrictedViewSnapshot = {\n    enabled: false,\n    targetPresets: ['creative'],\n    includeSubagents: false,\n    writable: false,\n    settingsStatus: 'loading',\n    status: null,\n  }\n  const listeners = new Set<() => void>()\n  const view: UnrestrictedViewSource = {\n    getSnapshot: () => snapshot,\n    subscribe(listener) {\n      listeners.add(listener)\n      return () => listeners.delete(listener)\n    },\n  }\n\n  function publish(): void {\n    const current = settings.getSnapshot()\n    snapshot = {\n      enabled: current.value?.enabled === true,\n      targetPresets: current.value?.targetPresets ?? ['creative'],\n      includeSubagents: current.value?.includeSubagents === true,\n      writable: current.writable,\n      settingsStatus: current.status,\n      status: snapshot.status,\n      message: snapshot.message,\n    }\n    for (const listener of listeners) listener()\n  }\n\n  async function call<T>(endpoint: string): Promise<T> {\n    const result = await connection.rpc.call(RPC_CHANNEL, `unrestricted/${endpoint}`, {}) as RpcResult<T>\n    if (!result.ok) throw new Error(result.error.message)\n    return result.value\n  }\n\n  async function refresh(): Promise<void> {\n    try {\n      snapshot = { ...snapshot, status: await call<UnrestrictedStatus>('status'), message: undefined }\n    } catch (error) {\n      snapshot = { ...snapshot, message: messageOf(error) }\n    }\n    publish()\n  }\n\n  async function setValue<K extends keyof UnrestrictedSettings>(\n    key: K,\n    value: NonNullable<UnrestrictedSettings[K]>,\n  ): Promise<void> {\n    await settings.set(key, value)\n    publish()\n    setTimeout(() => void refresh(), 300)\n  }\n\n  ctx.effect(() => settings.subscribe(publish), 'dsh-unrestricted: settings mirror')\n  ctx.effect(\n    () => ctx.remote.$on('settings/document-updated', (namespace?: string) => {\n      if (namespace === undefined || namespace === SETTINGS_NS) void refresh()\n    }),\n    'dsh-unrestricted: settings invalidations',\n  )\n\n  publish()\n  void refresh()\n  return {\n    face: (): UnrestrictedCardInjected => ({\n      hooks: { view },\n      setEnabled: value => setValue('enabled', value),\n      setTargetPresets: value => setValue('targetPresets', value),\n      setIncludeSubagents: value => setValue('includeSubagents', value),\n      refresh,\n    }),\n  }\n}\n","/** Copy dictionaries for the creative assistant-injection card. */\nexport const zh = {\n  title: '勇于创作',\n  summaryEnabled: '已对目标 Agent 开启',\n  summaryDisabled: '已关闭',\n  summaryLoading: '读取中',\n  summaryUnavailable: '设置不可用',\n  description: '以可回放的 assistant 消息注入创作语境，不改写 DSH 系统提示词。默认只作用于 creative 预设，Standard 等其他 Agent 保持原样。',\n  toggle: '启用创作注入',\n  targetPresets: '目标预设（逗号分隔）',\n  includeSubagents: '同时作用于子代理',\n  ageSemantics: '“18+”只表示内容分级语境，不会给角色设定年龄、改龄或在正文中强调成年化。',\n  scopeNote: '只改变目标 Agent 发给模型的消息；不改变工具、权限、沙箱或 Agent 工作流。',\n  refresh: '刷新状态',\n  settingsUnavailable: '当前连接不可写设置（远程浏览器只读）。',\n  operationFailed: '操作失败：',\n} satisfies Record<string, string>\n\nexport type UnrestrictedLocaleKey = keyof typeof zh\n\nexport const en = {\n  title: 'Creative mode',\n  summaryEnabled: 'Enabled for target agents',\n  summaryDisabled: 'Disabled',\n  summaryLoading: 'Loading',\n  summaryUnavailable: 'Settings unavailable',\n  description: 'Injects replayable assistant-role creative context without rewriting DSH system prompts. It targets only the creative preset by default; Standard and other agents stay unchanged.',\n  toggle: 'Enable creative injection',\n  targetPresets: 'Target presets (comma-separated)',\n  includeSubagents: 'Also apply to subagents',\n  ageSemantics: '“18+” classifies the content context only; it never assigns or changes character ages or advertises an age-up in the prose.',\n  scopeNote: 'Only target-agent model messages change. Tools, permissions, sandboxing, and agent workflow do not.',\n  refresh: 'Refresh status',\n  settingsUnavailable: 'This connection cannot write settings (remote browser is read-only).',\n  operationFailed: 'Operation failed: ',\n} satisfies Record<UnrestrictedLocaleKey, string>\n\nexport const NS = 'settings.unrestricted'\n","/**\n * Stylesheet for the unrestricted settings card. One hand-written stylesheet\n * injected as a single <style data-plugin> tag (the loader convention for\n * plugin-owned styles); colors come from the shared --dsw-* tokens.\n */\n\nconst CSS = `\n.dsh-unrestricted-card {\n  display: block;\n  width: 100%;\n  max-width: 760px;\n  box-sizing: border-box;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 10px;\n  overflow: hidden;\n  background: var(--dsw-alias-bg-layer-3);\n  color: var(--dsw-alias-label-primary);\n}\n\n.dsh-unrestricted-summary {\n  display: flex;\n  min-height: 48px;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  box-sizing: border-box;\n  padding: 12px 14px;\n  cursor: pointer;\n  list-style: none;\n  touch-action: manipulation;\n  user-select: none;\n}\n\n.dsh-unrestricted-summary::-webkit-details-marker { display: none; }\n\n.dsh-unrestricted-summary:hover { background: var(--dsw-alias-interactive-bg-hover); }\n\n.dsh-unrestricted-summary:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: -2px;\n}\n\n.dsh-unrestricted-summary::after {\n  width: 8px;\n  height: 8px;\n  flex: none;\n  border-right: 2px solid var(--dsw-alias-label-tertiary);\n  border-bottom: 2px solid var(--dsw-alias-label-tertiary);\n  content: '';\n  transform: rotate(45deg);\n  transition: transform 160ms ease;\n}\n\n.dsh-unrestricted-card[open] > .dsh-unrestricted-summary {\n  border-bottom: 1px solid var(--dsw-alias-border-l2);\n}\n\n.dsh-unrestricted-card[open] > .dsh-unrestricted-summary::after {\n  transform: rotate(225deg);\n}\n\n.dsh-unrestricted-summaryText {\n  display: flex;\n  min-width: 0;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n\n.dsh-unrestricted-summaryStatus {\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 999px;\n  padding: 1px 7px;\n  background: var(--dsw-alias-bg-layer-2);\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.dsh-unrestricted-summaryStatus[data-state='active'] {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n.dsh-unrestricted-summaryStatus[data-state='pending'] {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n.dsh-unrestricted-summaryStatus[data-state='error'] {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n.dsh-unrestricted-content {\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n  padding: 14px;\n}\n\n.dsh-unrestricted-title {\n  margin: 0;\n  font-size: 14px;\n  line-height: 20px;\n  font-weight: 600;\n}\n\n.dsh-unrestricted-statusTitle {\n  margin: 4px 0 0;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 600;\n}\n\n.dsh-unrestricted-description,\n.dsh-unrestricted-note {\n  margin: 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.dsh-unrestricted-note {\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.dsh-unrestricted-error {\n  margin: 0;\n  border: 1px solid var(--dsw-alias-state-error-primary);\n  border-radius: 8px;\n  padding: 8px 12px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 13px;\n  line-height: 20px;\n  overflow-wrap: anywhere;\n}\n\n.dsh-unrestricted-toggle {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  cursor: pointer;\n  user-select: none;\n}\n\n.dsh-unrestricted-toggle input {\n  accent-color: var(--dsw-alias-state-business-primary);\n}\n\n.dsh-unrestricted-field {\n  display: grid;\n  grid-template-columns: minmax(180px, 1fr) minmax(180px, 2fr);\n  align-items: center;\n  gap: 10px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n}\n\n.dsh-unrestricted-field input {\n  min-width: 0;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 6px;\n  padding: 5px 8px;\n  background: var(--dsw-alias-bg-layer-2);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n}\n\n.dsh-unrestricted-modes {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}\n\n.dsh-unrestricted-mode {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 8px;\n  font-size: 13px;\n  line-height: 18px;\n}\n\n.dsh-unrestricted-dot {\n  display: inline-block;\n  width: 7px;\n  height: 7px;\n  flex: none;\n  border-radius: 999px;\n  background: var(--dsw-alias-label-tertiary);\n}\n\n.dsh-unrestricted-dot[data-state='active'] {\n  background: var(--dsw-alias-state-success-primary);\n}\n\n.dsh-unrestricted-dot[data-state='checking'] {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n.dsh-unrestricted-dot[data-state='failed'] {\n  background: var(--dsw-alias-state-error-primary);\n}\n\n.dsh-unrestricted-modeName {\n  color: var(--dsw-alias-label-primary);\n}\n\n.dsh-unrestricted-modeState {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.dsh-unrestricted-issues {\n  flex-basis: 100%;\n  padding-left: 15px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n  line-height: 18px;\n  overflow-wrap: anywhere;\n}\n\n.dsh-unrestricted-actions {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n}\n\n.dsh-unrestricted-actions button {\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 6px;\n  padding: 4px 12px;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  cursor: pointer;\n}\n\n.dsh-unrestricted-actions button:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.dsh-unrestricted-actions button:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .dsh-unrestricted-summary::after { transition: none; }\n}\n`\n\n/** Inject the stylesheet once; the tag id doubles as the re-evaluation guard. */\nexport function ensureStyles(): void {\n  if (typeof document === 'undefined') return\n  if (document.querySelector('style[data-plugin=\"dsh-unrestricted\"]') !== null) return\n  const tag = document.createElement('style')\n  tag.dataset.plugin = 'dsh-unrestricted'\n  tag.textContent = CSS\n  document.head.appendChild(tag)\n}\n","/** Settings card for the preset-scoped assistant request injection. */\nimport type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'\nimport type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'\nimport type { UnrestrictedCardInjected } from './controller.ts'\nimport type { UnrestrictedLocaleKey } from './locales.ts'\n\nexport type UnrestrictedCardProps =\n  PropsRuntime<'settings.plugin.item'>\n  & PropsLocale<'settings.unrestricted'>\n  & InjectFace<UnrestrictedCardInjected>\n\nfunction parsePresets(value: string): string[] {\n  return [...new Set(value.split(',').map(item => item.trim()).filter(Boolean))]\n}\n\nexport function UnrestrictedCard(props: UnrestrictedCardProps) {\n  const { t } = props\n  const view = props.useView(snapshot => snapshot)\n  const active = view.enabled && view.status?.compatible === true\n  const summaryKey: UnrestrictedLocaleKey = view.settingsStatus === 'loading'\n    ? 'summaryLoading'\n    : view.settingsStatus === 'unavailable'\n      ? 'summaryUnavailable'\n      : active ? 'summaryEnabled' : 'summaryDisabled'\n  const disabled = !view.writable || view.settingsStatus !== 'ready'\n  return (\n    <details className=\"dsh-unrestricted-card\">\n      <summary className=\"dsh-unrestricted-summary\">\n        <span className=\"dsh-unrestricted-summaryText\">\n          <span className=\"dsh-unrestricted-title\" role=\"heading\" aria-level={3}>{t('title')}</span>\n          <span className=\"dsh-unrestricted-summaryStatus\" data-state={active ? 'active' : 'off'}>{t(summaryKey)}</span>\n        </span>\n      </summary>\n      <div className=\"dsh-unrestricted-content\">\n        <p className=\"dsh-unrestricted-description\">{t('description')}</p>\n        <label className=\"dsh-unrestricted-toggle\">\n          <input\n            type=\"checkbox\"\n            checked={view.enabled}\n            disabled={disabled}\n            onChange={event => { void props.setEnabled(event.target.checked) }}\n          />\n          <span>{t('toggle')}</span>\n        </label>\n        <label className=\"dsh-unrestricted-field\">\n          <span>{t('targetPresets')}</span>\n          <input\n            key={view.targetPresets.join(',')}\n            type=\"text\"\n            defaultValue={view.targetPresets.join(', ')}\n            disabled={disabled}\n            onBlur={event => { void props.setTargetPresets(parsePresets(event.target.value)) }}\n          />\n        </label>\n        <label className=\"dsh-unrestricted-toggle\">\n          <input\n            type=\"checkbox\"\n            checked={view.includeSubagents}\n            disabled={disabled}\n            onChange={event => { void props.setIncludeSubagents(event.target.checked) }}\n          />\n          <span>{t('includeSubagents')}</span>\n        </label>\n        <p className=\"dsh-unrestricted-note\">{t('ageSemantics')}</p>\n        <p className=\"dsh-unrestricted-note\">{t('scopeNote')}</p>\n        {view.settingsStatus === 'unavailable' && <p className=\"dsh-unrestricted-note\">{t('settingsUnavailable')}</p>}\n        {view.message !== undefined && <p className=\"dsh-unrestricted-error\">{t('operationFailed')}{view.message}</p>}\n        <div className=\"dsh-unrestricted-actions\">\n          <button type=\"button\" onClick={() => { void props.refresh() }}>{t('refresh')}</button>\n        </div>\n      </div>\n    </details>\n  )\n}\n","/** Unrestricted mode browser half: one keyed card in the plugin-configuration tab. */\nimport type {} from '@deepseek-ai/dsh-client-locale/client'\nimport type {} from '@deepseek-ai/dsh-client-ui-settings/client'\n// Type-only: the renderer provides the ctx.slots service used for registration.\nimport type {} from '@deepseek-ai/dsh-client-ui-renderer/client'\n// Type-only: the `settings.plugin.item` keyed slot declaration this card registers into.\nimport type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'\nimport type { Context } from '@deepseek-ai/cordis'\nimport { createUnrestrictedController } from './controller.ts'\nimport { en, NS, zh, type UnrestrictedLocaleKey } from './locales.ts'\nimport { ensureStyles } from './styles.ts'\nimport { UnrestrictedCard } from './UnrestrictedCard.tsx'\n\ndeclare module '@deepseek-ai/dsh-client-ui-slots' {\n  interface LocaleNamespaceMap {\n    /** Unrestricted mode copy. */\n    'settings.unrestricted': UnrestrictedLocaleKey\n  }\n}\n\n/** Services required by the registration and the controller. */\nexport const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']\n\n/** Contribute the unrestricted card to the plugin-configuration tab. */\nexport function apply(ctx: Context): void {\n  ensureStyles()\n  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-unrestricted: dictionaries')\n  const controller = createUnrestrictedController(ctx)\n  ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({\n    name: 'settings.plugin.item',\n    key: 'unrestricted',\n    locale: NS,\n    inject: () => controller.face(),\n  }, UnrestrictedCard))\n}\n"],"mappings":"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"}
+\ No newline at end of file
++{"version":3,"file":"client.js","names":[],"sources":["../src/client/controller.ts","../src/client/locales.ts","../src/client/styles.ts","../src/client/UnrestrictedCard.tsx","../src/client/index.tsx"],"sourcesContent":["/** Browser controller for the preset-scoped creative-injection settings card. */\nimport type { Context } from '@deepseek-ai/cordis'\nimport type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'\nimport type {} from '@deepseek-ai/dsh-api-remotes/client'\nimport type {} from '@deepseek-ai/dsh-client-ui-settings/client'\n\nexport interface UnrestrictedSettings {\n  enabled?: boolean\n  targetPresets?: string[]\n  includeSubagents?: boolean\n}\n\nexport interface UnrestrictedStatus {\n  compatible: boolean\n  requestInjectionsVersion: number\n  enabled: boolean\n  targetPresets: string[]\n  includeSubagents: boolean\n}\n\nexport interface UnrestrictedViewSnapshot {\n  enabled: boolean\n  targetPresets: string[]\n  includeSubagents: boolean\n  writable: boolean\n  settingsStatus: 'loading' | 'ready' | 'unavailable'\n  status: UnrestrictedStatus | null\n  message?: string\n}\n\ntype RpcResult<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } }\n\nexport interface UnrestrictedViewSource {\n  getSnapshot(): UnrestrictedViewSnapshot\n  subscribe(listener: () => void): () => void\n}\n\nexport interface UnrestrictedCardInjected {\n  hooks: { view: UnrestrictedViewSource }\n  setEnabled: (enabled: boolean) => Promise<void>\n  setTargetPresets: (targetPresets: string[]) => Promise<void>\n  setIncludeSubagents: (includeSubagents: boolean) => Promise<void>\n  refresh: () => Promise<void>\n}\n\nconst RPC_CHANNEL = '/api'\nconst SETTINGS_NS = 'unrestricted'\n\nconst messageOf = (error: unknown): string => error instanceof Error ? error.message : String(error)\n\nexport function createUnrestrictedController(ctx: Context) {\n  const connection = ctx.get('connection') as ConnectionHandle\n  const settings = ctx.settingsScope.bind<UnrestrictedSettings>({ namespace: SETTINGS_NS })\n  let snapshot: UnrestrictedViewSnapshot = {\n    enabled: false,\n    targetPresets: ['creative'],\n    includeSubagents: false,\n    writable: false,\n    settingsStatus: 'loading',\n    status: null,\n  }\n  let disposed = false\n  let refreshVersion = 0\n  const listeners = new Set<() => void>()\n  ctx.effect(() => () => {\n    disposed = true\n    refreshVersion++\n    listeners.clear()\n  }, 'dsh-unrestricted: controller lifecycle')\n  const view: UnrestrictedViewSource = {\n    getSnapshot: () => snapshot,\n    subscribe(listener) {\n      listeners.add(listener)\n      return () => listeners.delete(listener)\n    },\n  }\n\n  function publish(): void {\n    if (disposed) return\n    const current = settings.getSnapshot()\n    snapshot = {\n      enabled: current.value?.enabled === true,\n      targetPresets: current.value?.targetPresets ?? ['creative'],\n      includeSubagents: current.value?.includeSubagents === true,\n      writable: current.writable,\n      settingsStatus: current.status,\n      status: snapshot.status,\n      message: snapshot.message,\n    }\n    for (const listener of listeners) listener()\n  }\n\n  async function call<T>(endpoint: string): Promise<T> {\n    const result = await connection.rpc.call(RPC_CHANNEL, `unrestricted/${endpoint}`, {}) as RpcResult<T>\n    if (!result.ok) throw new Error(result.error.message)\n    return result.value\n  }\n\n  async function refresh(): Promise<void> {\n    if (disposed) return\n    const version = ++refreshVersion\n    try {\n      const status = await call<UnrestrictedStatus>('status')\n      if (disposed || version !== refreshVersion) return\n      snapshot = { ...snapshot, status, message: undefined }\n    } catch (error) {\n      if (disposed || version !== refreshVersion) return\n      snapshot = { ...snapshot, message: messageOf(error) }\n    }\n    publish()\n  }\n\n  async function setValue<K extends keyof UnrestrictedSettings>(\n    key: K,\n    value: NonNullable<UnrestrictedSettings[K]>,\n  ): Promise<void> {\n    if (disposed) return\n    await settings.set(key, value)\n    publish()\n    await refresh()\n  }\n\n  ctx.effect(() => settings.subscribe(publish), 'dsh-unrestricted: settings mirror')\n  ctx.effect(\n    () => ctx.remote.$on('settings/document-updated', (namespace?: string) => {\n      if (namespace === undefined || namespace === SETTINGS_NS) void refresh()\n    }),\n    'dsh-unrestricted: settings invalidations',\n  )\n\n  publish()\n  void refresh()\n  return {\n    face: (): UnrestrictedCardInjected => ({\n      hooks: { view },\n      setEnabled: value => setValue('enabled', value),\n      setTargetPresets: value => setValue('targetPresets', value),\n      setIncludeSubagents: value => setValue('includeSubagents', value),\n      refresh,\n    }),\n  }\n}\n","/** Copy dictionaries for the creative assistant-injection card. */\nexport const zh = {\n  title: '勇于创作',\n  summaryEnabled: '已对目标 Agent 开启',\n  summaryDisabled: '已关闭',\n  summaryLoading: '读取中',\n  summaryUnavailable: '设置不可用',\n  description: '以可回放的 assistant 消息注入创作语境，不改写 DSH 系统提示词。默认只作用于 creative 预设，Standard 等其他 Agent 保持原样。',\n  toggle: '启用创作注入',\n  targetPresets: '目标预设（逗号分隔）',\n  includeSubagents: '同时作用于子代理',\n  ageSemantics: '“18+”只表示内容分级语境，不会给角色设定年龄、改龄或在正文中强调成年化。',\n  scopeNote: '只改变目标 Agent 发给模型的消息；不改变工具、权限、沙箱或 Agent 工作流。',\n  refresh: '刷新状态',\n  settingsUnavailable: '当前连接不可写设置（远程浏览器只读）。',\n  operationFailed: '操作失败：',\n} satisfies Record<string, string>\n\nexport type UnrestrictedLocaleKey = keyof typeof zh\n\nexport const en = {\n  title: 'Creative mode',\n  summaryEnabled: 'Enabled for target agents',\n  summaryDisabled: 'Disabled',\n  summaryLoading: 'Loading',\n  summaryUnavailable: 'Settings unavailable',\n  description: 'Injects replayable assistant-role creative context without rewriting DSH system prompts. It targets only the creative preset by default; Standard and other agents stay unchanged.',\n  toggle: 'Enable creative injection',\n  targetPresets: 'Target presets (comma-separated)',\n  includeSubagents: 'Also apply to subagents',\n  ageSemantics: '“18+” classifies the content context only; it never assigns or changes character ages or advertises an age-up in the prose.',\n  scopeNote: 'Only target-agent model messages change. Tools, permissions, sandboxing, and agent workflow do not.',\n  refresh: 'Refresh status',\n  settingsUnavailable: 'This connection cannot write settings (remote browser is read-only).',\n  operationFailed: 'Operation failed: ',\n} satisfies Record<UnrestrictedLocaleKey, string>\n\nexport const NS = 'settings.unrestricted'\n","/**\n * Stylesheet for the unrestricted settings card. One hand-written stylesheet\n * injected as a single <style data-plugin> tag (the loader convention for\n * plugin-owned styles); colors come from the shared --dsw-* tokens.\n */\n\nconst CSS = `\n.dsh-unrestricted-card {\n  display: block;\n  width: 100%;\n  max-width: 760px;\n  box-sizing: border-box;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 10px;\n  overflow: hidden;\n  background: var(--dsw-alias-bg-layer-3);\n  color: var(--dsw-alias-label-primary);\n}\n\n.dsh-unrestricted-summary {\n  display: flex;\n  min-height: 48px;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  box-sizing: border-box;\n  padding: 12px 14px;\n  cursor: pointer;\n  list-style: none;\n  touch-action: manipulation;\n  user-select: none;\n}\n\n.dsh-unrestricted-summary::-webkit-details-marker { display: none; }\n\n.dsh-unrestricted-summary:hover { background: var(--dsw-alias-interactive-bg-hover); }\n\n.dsh-unrestricted-summary:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: -2px;\n}\n\n.dsh-unrestricted-summary::after {\n  width: 8px;\n  height: 8px;\n  flex: none;\n  border-right: 2px solid var(--dsw-alias-label-tertiary);\n  border-bottom: 2px solid var(--dsw-alias-label-tertiary);\n  content: '';\n  transform: rotate(45deg);\n  transition: transform 160ms ease;\n}\n\n.dsh-unrestricted-card[open] > .dsh-unrestricted-summary {\n  border-bottom: 1px solid var(--dsw-alias-border-l2);\n}\n\n.dsh-unrestricted-card[open] > .dsh-unrestricted-summary::after {\n  transform: rotate(225deg);\n}\n\n.dsh-unrestricted-summaryText {\n  display: flex;\n  min-width: 0;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n\n.dsh-unrestricted-summaryStatus {\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 999px;\n  padding: 1px 7px;\n  background: var(--dsw-alias-bg-layer-2);\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.dsh-unrestricted-summaryStatus[data-state='active'] {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n.dsh-unrestricted-summaryStatus[data-state='pending'] {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n.dsh-unrestricted-summaryStatus[data-state='error'] {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n.dsh-unrestricted-content {\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n  padding: 14px;\n}\n\n.dsh-unrestricted-title {\n  margin: 0;\n  font-size: 14px;\n  line-height: 20px;\n  font-weight: 600;\n}\n\n.dsh-unrestricted-statusTitle {\n  margin: 4px 0 0;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 600;\n}\n\n.dsh-unrestricted-description,\n.dsh-unrestricted-note {\n  margin: 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.dsh-unrestricted-note {\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.dsh-unrestricted-error {\n  margin: 0;\n  border: 1px solid var(--dsw-alias-state-error-primary);\n  border-radius: 8px;\n  padding: 8px 12px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 13px;\n  line-height: 20px;\n  overflow-wrap: anywhere;\n}\n\n.dsh-unrestricted-toggle {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  cursor: pointer;\n  user-select: none;\n}\n\n.dsh-unrestricted-toggle input {\n  accent-color: var(--dsw-alias-state-business-primary);\n}\n\n.dsh-unrestricted-field {\n  display: grid;\n  grid-template-columns: minmax(180px, 1fr) minmax(180px, 2fr);\n  align-items: center;\n  gap: 10px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n}\n\n.dsh-unrestricted-field input {\n  min-width: 0;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 6px;\n  padding: 5px 8px;\n  background: var(--dsw-alias-bg-layer-2);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n}\n\n.dsh-unrestricted-modes {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}\n\n.dsh-unrestricted-mode {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 8px;\n  font-size: 13px;\n  line-height: 18px;\n}\n\n.dsh-unrestricted-dot {\n  display: inline-block;\n  width: 7px;\n  height: 7px;\n  flex: none;\n  border-radius: 999px;\n  background: var(--dsw-alias-label-tertiary);\n}\n\n.dsh-unrestricted-dot[data-state='active'] {\n  background: var(--dsw-alias-state-success-primary);\n}\n\n.dsh-unrestricted-dot[data-state='checking'] {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n.dsh-unrestricted-dot[data-state='failed'] {\n  background: var(--dsw-alias-state-error-primary);\n}\n\n.dsh-unrestricted-modeName {\n  color: var(--dsw-alias-label-primary);\n}\n\n.dsh-unrestricted-modeState {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.dsh-unrestricted-issues {\n  flex-basis: 100%;\n  padding-left: 15px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n  line-height: 18px;\n  overflow-wrap: anywhere;\n}\n\n.dsh-unrestricted-actions {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n}\n\n.dsh-unrestricted-actions button {\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 6px;\n  padding: 4px 12px;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  cursor: pointer;\n}\n\n.dsh-unrestricted-actions button:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.dsh-unrestricted-actions button:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .dsh-unrestricted-summary::after { transition: none; }\n}\n`\n\n/** Inject the stylesheet once; the tag id doubles as the re-evaluation guard. */\nexport function ensureStyles(): () => void {\n  if (typeof document === 'undefined') return () => {} // 无页面时没有样式资源。\n  if (document.querySelector('style[data-plugin=\"dsh-unrestricted\"]') !== null) return () => {} // 已有资源由原注册方释放。\n  const tag = document.createElement('style')\n  tag.dataset.plugin = 'dsh-unrestricted'\n  tag.textContent = CSS\n  document.head.appendChild(tag)\n  return () => tag.remove()\n}\n","/** Settings card for the preset-scoped assistant request injection. */\nimport type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'\nimport type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'\nimport type { UnrestrictedCardInjected } from './controller.ts'\nimport type { UnrestrictedLocaleKey } from './locales.ts'\n\nexport type UnrestrictedCardProps =\n  PropsRuntime<'plugins.bundle.config'>\n  & PropsLocale<'settings.unrestricted'>\n  & InjectFace<UnrestrictedCardInjected>\n\nfunction parsePresets(value: string): string[] {\n  return [...new Set(value.split(',').map(item => item.trim()).filter(Boolean))]\n}\n\nexport function UnrestrictedCard(props: UnrestrictedCardProps) {\n  const { t } = props\n  const view = props.useView(snapshot => snapshot)\n  const active = view.enabled && view.status?.compatible === true\n  const summaryKey: UnrestrictedLocaleKey = view.settingsStatus === 'loading'\n    ? 'summaryLoading'\n    : view.settingsStatus === 'unavailable'\n      ? 'summaryUnavailable'\n      : active ? 'summaryEnabled' : 'summaryDisabled'\n  const disabled = !view.writable || view.settingsStatus !== 'ready'\n  return (\n    <details className=\"dsh-unrestricted-card\" open>\n      <summary className=\"dsh-unrestricted-summary\">\n        <span className=\"dsh-unrestricted-summaryText\">\n          <span className=\"dsh-unrestricted-title\" role=\"heading\" aria-level={3}>{t('title')}</span>\n          <span className=\"dsh-unrestricted-summaryStatus\" data-state={active ? 'active' : 'off'}>{t(summaryKey)}</span>\n        </span>\n      </summary>\n      <div className=\"dsh-unrestricted-content\">\n        <p className=\"dsh-unrestricted-description\">{t('description')}</p>\n        <label className=\"dsh-unrestricted-toggle\">\n          <input\n            type=\"checkbox\"\n            checked={view.enabled}\n            disabled={disabled}\n            onChange={event => { void props.setEnabled(event.target.checked) }}\n          />\n          <span>{t('toggle')}</span>\n        </label>\n        <label className=\"dsh-unrestricted-field\">\n          <span>{t('targetPresets')}</span>\n          <input\n            key={view.targetPresets.join(',')}\n            type=\"text\"\n            defaultValue={view.targetPresets.join(', ')}\n            disabled={disabled}\n            onBlur={event => { void props.setTargetPresets(parsePresets(event.target.value)) }}\n          />\n        </label>\n        <label className=\"dsh-unrestricted-toggle\">\n          <input\n            type=\"checkbox\"\n            checked={view.includeSubagents}\n            disabled={disabled}\n            onChange={event => { void props.setIncludeSubagents(event.target.checked) }}\n          />\n          <span>{t('includeSubagents')}</span>\n        </label>\n        <p className=\"dsh-unrestricted-note\">{t('ageSemantics')}</p>\n        <p className=\"dsh-unrestricted-note\">{t('scopeNote')}</p>\n        {view.settingsStatus === 'unavailable' && <p className=\"dsh-unrestricted-note\">{t('settingsUnavailable')}</p>}\n        {view.message !== undefined && <p className=\"dsh-unrestricted-error\">{t('operationFailed')}{view.message}</p>}\n        <div className=\"dsh-unrestricted-actions\">\n          <button type=\"button\" onClick={() => { void props.refresh() }}>{t('refresh')}</button>\n        </div>\n      </div>\n    </details>\n  )\n}\n","/** Unrestricted mode browser half: one keyed card in the plugin-configuration tab. */\nimport type {} from '@deepseek-ai/dsh-client-locale/client'\nimport type {} from '@deepseek-ai/dsh-client-ui-settings/client'\n// Type-only: the renderer provides the ctx.slots service used for registration.\nimport type {} from '@deepseek-ai/dsh-client-ui-renderer/client'\n// Type-only: the `plugins.bundle.config` keyed slot declaration this card registers into.\nimport type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'\nimport type { Context } from '@deepseek-ai/cordis'\nimport { createUnrestrictedController } from './controller.ts'\nimport { en, NS, zh, type UnrestrictedLocaleKey } from './locales.ts'\nimport { ensureStyles } from './styles.ts'\nimport { UnrestrictedCard } from './UnrestrictedCard.tsx'\n\ndeclare module '@deepseek-ai/dsh-client-ui-slots' {\n  interface LocaleNamespaceMap {\n    /** Unrestricted mode copy. */\n    'settings.unrestricted': UnrestrictedLocaleKey\n  }\n}\n\n/** Services required by the registration and the controller. */\nexport const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']\n\n/** Contribute the unrestricted card to the plugin-configuration tab. */\nexport function apply(ctx: Context): void {\n  ctx.effect(ensureStyles, 'dsh-unrestricted: stylesheet')\n  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-unrestricted: dictionaries')\n  const controller = createUnrestrictedController(ctx)\n  ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({\n    name: 'plugins.bundle.config',\n    key: 'dsh-unrestricted',\n    locale: NS,\n    inject: () => controller.face(),\n  }, UnrestrictedCard))\n}\n"],"mappings":";;;;;;;;EA6CA,MAAM,cAAc;EACpB,MAAM,cAAc;EAEpB,MAAM,aAAa,UAA2B,iBAAiB,QAAQ,MAAM,UAAU,OAAO,KAAK;EAEnG,SAAgB,6BAA6B,KAAc;GACzD,MAAM,aAAa,IAAI,IAAI,YAAY;GACvC,MAAM,WAAW,IAAI,cAAc,KAA2B,EAAE,WAAW,YAAY,CAAC;GACxF,IAAI,WAAqC;IACvC,SAAS;IACT,eAAe,CAAC,UAAU;IAC1B,kBAAkB;IAClB,UAAU;IACV,gBAAgB;IAChB,QAAQ;GACV;GACA,IAAI,WAAW;GACf,IAAI,iBAAiB;GACrB,MAAM,4BAAY,IAAI,IAAgB;GACtC,IAAI,mBAAmB;IACrB,WAAW;IACX;IACA,UAAU,MAAM;GAClB,GAAG,wCAAwC;GAC3C,MAAM,OAA+B;IACnC,mBAAmB;IACnB,UAAU,UAAU;KAClB,UAAU,IAAI,QAAQ;KACtB,aAAa,UAAU,OAAO,QAAQ;IACxC;GACF;GAEA,SAAS,UAAgB;IACvB,IAAI,UAAU;IACd,MAAM,UAAU,SAAS,YAAY;IACrC,WAAW;KACT,SAAS,QAAQ,OAAO,YAAY;KACpC,eAAe,QAAQ,OAAO,iBAAiB,CAAC,UAAU;KAC1D,kBAAkB,QAAQ,OAAO,qBAAqB;KACtD,UAAU,QAAQ;KAClB,gBAAgB,QAAQ;KACxB,QAAQ,SAAS;KACjB,SAAS,SAAS;IACpB;IACA,KAAK,MAAM,YAAY,WAAW,SAAS;GAC7C;GAEA,eAAe,KAAQ,UAA8B;IACnD,MAAM,SAAS,MAAM,WAAW,IAAI,KAAK,aAAa,gBAAgB,YAAY,CAAC,CAAC;IACpF,IAAI,CAAC,OAAO,IAAI,MAAM,IAAI,MAAM,OAAO,MAAM,OAAO;IACpD,OAAO,OAAO;GAChB;GAEA,eAAe,UAAyB;IACtC,IAAI,UAAU;IACd,MAAM,UAAU,EAAE;IAClB,IAAI;KACF,MAAM,SAAS,MAAM,KAAyB,QAAQ;KACtD,IAAI,YAAY,YAAY,gBAAgB;KAC5C,WAAW;MAAE,GAAG;MAAU;MAAQ,SAAS,KAAA;KAAU;IACvD,SAAS,OAAO;KACd,IAAI,YAAY,YAAY,gBAAgB;KAC5C,WAAW;MAAE,GAAG;MAAU,SAAS,UAAU,KAAK;KAAE;IACtD;IACA,QAAQ;GACV;GAEA,eAAe,SACb,KACA,OACe;IACf,IAAI,UAAU;IACd,MAAM,SAAS,IAAI,KAAK,KAAK;IAC7B,QAAQ;IACR,MAAM,QAAQ;GAChB;GAEA,IAAI,aAAa,SAAS,UAAU,OAAO,GAAG,mCAAmC;GACjF,IAAI,aACI,IAAI,OAAO,IAAI,8BAA8B,cAAuB;IACxE,IAAI,cAAc,KAAA,KAAa,cAAc,aAAa,QAAa;GACzE,CAAC,GACD,0CACF;GAEA,QAAQ;GACR,QAAa;GACb,OAAO,EACL,aAAuC;IACrC,OAAO,EAAE,KAAK;IACd,aAAY,UAAS,SAAS,WAAW,KAAK;IAC9C,mBAAkB,UAAS,SAAS,iBAAiB,KAAK;IAC1D,sBAAqB,UAAS,SAAS,oBAAoB,KAAK;IAChE;GACF,GACF;EACF;;;;EC5IA,MAAa,KAAK;GAChB,OAAO;GACP,gBAAgB;GAChB,iBAAiB;GACjB,gBAAgB;GAChB,oBAAoB;GACpB,aAAa;GACb,QAAQ;GACR,eAAe;GACf,kBAAkB;GAClB,cAAc;GACd,WAAW;GACX,SAAS;GACT,qBAAqB;GACrB,iBAAiB;EACnB;EAIA,MAAa,KAAK;GAChB,OAAO;GACP,gBAAgB;GAChB,iBAAiB;GACjB,gBAAgB;GAChB,oBAAoB;GACpB,aAAa;GACb,QAAQ;GACR,eAAe;GACf,kBAAkB;GAClB,cAAc;GACd,WAAW;GACX,SAAS;GACT,qBAAqB;GACrB,iBAAiB;EACnB;EAEA,MAAa,KAAK;;;;;;;;EC/BlB,MAAM,MAAM;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EA2PZ,SAAgB,eAA2B;GACzC,IAAI,OAAO,aAAa,aAAa,aAAa,CAAC;GACnD,IAAI,SAAS,cAAc,yCAAuC,MAAM,MAAM,aAAa,CAAC;GAC5F,MAAM,MAAM,SAAS,cAAc,OAAO;GAC1C,IAAI,QAAQ,SAAS;GACrB,IAAI,cAAc;GAClB,SAAS,KAAK,YAAY,GAAG;GAC7B,aAAa,IAAI,OAAO;EAC1B;;;EC9PA,SAAS,aAAa,OAAyB;GAC7C,OAAO,CAAC,GAAG,IAAI,IAAI,MAAM,MAAM,GAAG,CAAC,CAAC,KAAI,SAAQ,KAAK,KAAK,CAAC,CAAC,CAAC,OAAO,OAAO,CAAC,CAAC;EAC/E;EAEA,SAAgB,iBAAiB,OAA8B;GAC7D,MAAM,EAAE,MAAM;GACd,MAAM,OAAO,MAAM,SAAQ,aAAY,QAAQ;GAC/C,MAAM,SAAS,KAAK,WAAW,KAAK,QAAQ,eAAe;GAC3D,MAAM,aAAoC,KAAK,mBAAmB,YAC9D,mBACA,KAAK,mBAAmB,gBACtB,uBACA,SAAS,mBAAmB;GAClC,MAAM,WAAW,CAAC,KAAK,YAAY,KAAK,mBAAmB;GAC3D,OACE,iBAAA,GAAA,kBAAA,KAAA,CAAC,WAAD;IAAS,WAAU;IAAwB,MAAA;cAA3C,CACE,iBAAA,GAAA,kBAAA,IAAA,CAAC,WAAD;KAAS,WAAU;eACjB,iBAAA,GAAA,kBAAA,KAAA,CAAC,QAAD;MAAM,WAAU;gBAAhB,CACE,iBAAA,GAAA,kBAAA,IAAA,CAAC,QAAD;OAAM,WAAU;OAAyB,MAAK;OAAU,cAAY;iBAAI,EAAE,OAAO;MAAQ,CAAA,GACzF,iBAAA,GAAA,kBAAA,IAAA,CAAC,QAAD;OAAM,WAAU;OAAiC,cAAY,SAAS,WAAW;iBAAQ,EAAE,UAAU;MAAQ,CAAA,CACzG;;IACC,CAAA,GACT,iBAAA,GAAA,kBAAA,KAAA,CAAC,OAAD;KAAK,WAAU;eAAf;MACE,iBAAA,GAAA,kBAAA,IAAA,CAAC,KAAD;OAAG,WAAU;iBAAgC,EAAE,aAAa;MAAK,CAAA;MACjE,iBAAA,GAAA,kBAAA,KAAA,CAAC,SAAD;OAAO,WAAU;iBAAjB,CACE,iBAAA,GAAA,kBAAA,IAAA,CAAC,SAAD;QACE,MAAK;QACL,SAAS,KAAK;QACJ;QACV,WAAU,UAAS;SAAE,MAAW,WAAW,MAAM,OAAO,OAAO;QAAE;OAClE,CAAA,GACD,iBAAA,GAAA,kBAAA,IAAA,CAAC,QAAD,EAAA,UAAO,EAAE,QAAQ,EAAQ,CAAA,CACpB;;MACP,iBAAA,GAAA,kBAAA,KAAA,CAAC,SAAD;OAAO,WAAU;iBAAjB,CACE,iBAAA,GAAA,kBAAA,IAAA,CAAC,QAAD,EAAA,UAAO,EAAE,eAAe,EAAQ,CAAA,GAChC,iBAAA,GAAA,kBAAA,IAAA,CAAC,SAAD;QAEE,MAAK;QACL,cAAc,KAAK,cAAc,KAAK,IAAI;QAChC;QACV,SAAQ,UAAS;SAAE,MAAW,iBAAiB,aAAa,MAAM,OAAO,KAAK,CAAC;QAAE;OAClF,GALM,KAAK,cAAc,KAAK,GAAG,CAKjC,CACI;;MACP,iBAAA,GAAA,kBAAA,KAAA,CAAC,SAAD;OAAO,WAAU;iBAAjB,CACE,iBAAA,GAAA,kBAAA,IAAA,CAAC,SAAD;QACE,MAAK;QACL,SAAS,KAAK;QACJ;QACV,WAAU,UAAS;SAAE,MAAW,oBAAoB,MAAM,OAAO,OAAO;QAAE;OAC3E,CAAA,GACD,iBAAA,GAAA,kBAAA,IAAA,CAAC,QAAD,EAAA,UAAO,EAAE,kBAAkB,EAAQ,CAAA,CAC9B;;MACP,iBAAA,GAAA,kBAAA,IAAA,CAAC,KAAD;OAAG,WAAU;iBAAyB,EAAE,cAAc;MAAK,CAAA;MAC3D,iBAAA,GAAA,kBAAA,IAAA,CAAC,KAAD;OAAG,WAAU;iBAAyB,EAAE,WAAW;MAAK,CAAA;MACvD,KAAK,mBAAmB,iBAAiB,iBAAA,GAAA,kBAAA,IAAA,CAAC,KAAD;OAAG,WAAU;iBAAyB,EAAE,qBAAqB;MAAK,CAAA;MAC3G,KAAK,YAAY,KAAA,KAAa,iBAAA,GAAA,kBAAA,KAAA,CAAC,KAAD;OAAG,WAAU;iBAAb,CAAuC,EAAE,iBAAiB,GAAG,KAAK,OAAW;;MAC5G,iBAAA,GAAA,kBAAA,IAAA,CAAC,OAAD;OAAK,WAAU;iBACb,iBAAA,GAAA,kBAAA,IAAA,CAAC,UAAD;QAAQ,MAAK;QAAS,eAAe;SAAE,MAAW,QAAQ;QAAE;kBAAI,EAAE,SAAS;OAAU,CAAA;MAClF,CAAA;KACF;MACE;;EAEb;;;;ECpDA,MAAa,SAAS;GAAC;GAAS;GAAU;GAAc;GAAU;EAAe;;EAGjF,SAAgB,MAAM,KAAoB;GACxC,IAAI,OAAO,cAAc,8BAA8B;GACvD,IAAI,aAAa,IAAI,OAAO,SAAS,IAAI;IAAE;IAAI;GAAG,CAAC,GAAG,gCAAgC;GACtF,MAAM,aAAa,6BAA6B,GAAG;GACnD,IAAI,MAAM,OAAO,+BAA+B,IAAI,MAAM,SAAS;IACjE,MAAM;IACN,KAAK;IACL,QAAQ;IACR,cAAc,WAAW,KAAK;GAChC,GAAG,gBAAgB,CAAC;EACtB"}
+\ No newline at end of file
+diff --git a/package.json b/package.json
+index 8482f3e0fc..87607da570 100644
+--- a/package.json
++++ b/package.json
+@@ -3 +3 @@
+-  "version": "0.3.0",
++  "version": "0.3.0+my43.alpha2",
+@@ -41 +41 @@
+-        "@deepseek-ai/dsh-client-ui-settings-plugins"
++        "@deepseek-ai/dsh-client-ui-plugin-manager"
+diff --git a/src/client/UnrestrictedCard.tsx b/src/client/UnrestrictedCard.tsx
+index 571707653b..51455245de 100644
+--- a/src/client/UnrestrictedCard.tsx
++++ b/src/client/UnrestrictedCard.tsx
+@@ -3 +3 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
+-import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
++import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+@@ -8 +8 @@ export type UnrestrictedCardProps =
+-  PropsRuntime<'settings.plugin.item'>
++  PropsRuntime<'plugins.bundle.config'>
+@@ -27 +27 @@ export function UnrestrictedCard(props: UnrestrictedCardProps) {
+-    <details className="dsh-unrestricted-card">
++    <details className="dsh-unrestricted-card" open>
+diff --git a/src/client/controller.ts b/src/client/controller.ts
+index 6ab79106ef..3ddf75531d 100644
+--- a/src/client/controller.ts
++++ b/src/client/controller.ts
+@@ -61,0 +62,2 @@ export function createUnrestrictedController(ctx: Context) {
++  let disposed = false
++  let refreshVersion = 0
+@@ -62,0 +65,5 @@ export function createUnrestrictedController(ctx: Context) {
++  ctx.effect(() => () => {
++    disposed = true
++    refreshVersion++
++    listeners.clear()
++  }, 'dsh-unrestricted: controller lifecycle')
+@@ -71,0 +79 @@ export function createUnrestrictedController(ctx: Context) {
++    if (disposed) return
+@@ -91,0 +100,2 @@ export function createUnrestrictedController(ctx: Context) {
++    if (disposed) return
++    const version = ++refreshVersion
+@@ -93 +103,3 @@ export function createUnrestrictedController(ctx: Context) {
+-      snapshot = { ...snapshot, status: await call<UnrestrictedStatus>('status'), message: undefined }
++      const status = await call<UnrestrictedStatus>('status')
++      if (disposed || version !== refreshVersion) return
++      snapshot = { ...snapshot, status, message: undefined }
+@@ -94,0 +107 @@ export function createUnrestrictedController(ctx: Context) {
++      if (disposed || version !== refreshVersion) return
+@@ -103,0 +117 @@ export function createUnrestrictedController(ctx: Context) {
++    if (disposed) return
+@@ -106 +120 @@ export function createUnrestrictedController(ctx: Context) {
+-    setTimeout(() => void refresh(), 300)
++    await refresh()
+diff --git a/src/client/index.tsx b/src/client/index.tsx
+index 0c66c9d05b..e4145384e4 100644
+--- a/src/client/index.tsx
++++ b/src/client/index.tsx
+@@ -6,2 +6,2 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+-// Type-only: the `settings.plugin.item` keyed slot declaration this card registers into.
+-import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
++// Type-only: the `plugins.bundle.config` keyed slot declaration this card registers into.
++import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+@@ -26 +26 @@ export function apply(ctx: Context): void {
+-  ensureStyles()
++  ctx.effect(ensureStyles, 'dsh-unrestricted: stylesheet')
+@@ -29,3 +29,3 @@ export function apply(ctx: Context): void {
+-  ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
+-    name: 'settings.plugin.item',
+-    key: 'unrestricted',
++  ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
++    name: 'plugins.bundle.config',
++    key: 'dsh-unrestricted',
+diff --git a/src/client/styles.ts b/src/client/styles.ts
+index 4f9dd2f0e6..f003c165d7 100644
+--- a/src/client/styles.ts
++++ b/src/client/styles.ts
+@@ -258,3 +258,3 @@ const CSS = `
+-export function ensureStyles(): void {
+-  if (typeof document === 'undefined') return
+-  if (document.querySelector('style[data-plugin="dsh-unrestricted"]') !== null) return
++export function ensureStyles(): () => void {
++  if (typeof document === 'undefined') return () => {} // 无页面时没有样式资源。
++  if (document.querySelector('style[data-plugin="dsh-unrestricted"]') !== null) return () => {} // 已有资源由原注册方释放。
+@@ -264,0 +265 @@ export function ensureStyles(): void {
++  return () => tag.remove()
+diff --git a/b/tests/client-bundle.spec.mjs b/tests/client-bundle.spec.mjs
+new file mode 100644
+index 0000000000..93920bcb0f
+--- /dev/null
++++ b/tests/client-bundle.spec.mjs
+@@ -0,0 +1,93 @@
++import assert from 'node:assert/strict'
++import test from 'node:test'
++import vm from 'node:vm'
++import { readFileSync } from 'node:fs'
++
++// 在独立 VM 里运行交付 bundle，验证真实注册入口和异步卸载，不连接用户实例。
++function harness({ pending = false } = {}) {
++  let plugin, options, component, face, invalidation, settingsListener
++  const disposers = [], styles = new Set(), calls = [], resolvers = []
++  let value = { enabled: true, targetPresets: ['creative'], includeSubagents: false }
++  const document = {
++    querySelector: () => styles.values().next().value ?? null,
++    createElement: () => { const tag = { dataset: {}, remove: () => styles.delete(tag) }; return tag },
++    head: { appendChild: tag => styles.add(tag) },
++  }
++  const ctx = {
++    get: () => ({ rpc: { call: async (...args) => {
++      calls.push(args)
++      if (pending) await new Promise(resolve => resolvers.push(resolve))
++      return { ok: true, value: { ...value, compatible: true, requestInjectionsVersion: 2 } }
++    } } }),
++    effect: factory => { const off = factory(); if (off) disposers.push(off) },
++    locale: { register: () => () => {} },
++    settingsScope: { bind: () => ({
++      getSnapshot: () => ({ value, writable: true, status: 'ready' }),
++      set: async (key, v) => { value = { ...value, [key]: v }; settingsListener?.() },
++      subscribe: callback => { settingsListener = callback; return () => { settingsListener = undefined } },
++    }) },
++    remote: { $on: (_event, cb) => { invalidation = cb; return () => { invalidation = undefined } } },
++    slots: {
++      inject: (slot, factory) => { assert.equal(slot, 'plugins.bundle.config'); const off = factory(); if (off) disposers.push(off) },
++      register: (opts, c) => { options = opts; component = c; face = opts.inject(); return () => { face = undefined } },
++    },
++  }
++  const jsx = (type, props) => ({ type, props })
++  vm.runInNewContext(readFileSync(process.env.UNRESTRICTED_CLIENT_BUNDLE ?? new URL('../lib/client.js', import.meta.url), 'utf8'), {
++    document, window: { __ModuleLoader__: { load: ({ factory }) => { plugin = factory(() => ({ jsx, jsxs: jsx })) } } },
++  })
++  plugin.apply(ctx)
++  return {
++    options, component, face, calls, styles,
++    invalidate: () => invalidation?.('unrestricted'),
++    resolve: () => resolvers.splice(0).forEach(resolve => resolve()),
++    dispose: () => disposers.reverse().forEach(off => off()),
++  }
++}
++const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve() }
++
++test('制品注册外部 bundle 配置页，默认展开，卸载释放样式与订阅', async () => {
++  const h = harness()
++  try {
++    await settle()
++    assert.equal(h.options.name, 'plugins.bundle.config')
++    assert.equal(h.options.key, 'dsh-unrestricted')
++    assert.equal(h.styles.size, 1)
++    const output = h.component({ ...h.face, t: key => key, useView: read => read(h.face.hooks.view.getSnapshot()) })
++    assert.equal(output.type, 'details')
++    assert.equal(output.props.open, true)
++  } finally { h.dispose() }
++  assert.equal(h.styles.size, 0)
++  const count = h.calls.length
++  h.invalidate()
++  await settle()
++  assert.equal(h.calls.length, count)
++})
++
++test('设置提交后立即刷新共享状态，默认子Agent排除保持不变', async () => {
++  const h = harness()
++  try {
++    await settle()
++    await h.face.setEnabled(false)
++    const view = h.face.hooks.view.getSnapshot()
++    assert.equal(view.enabled, false)
++    assert.equal(view.status.enabled, false)
++    assert.equal(view.includeSubagents, false)
++    assert.equal(h.calls.at(-1)[0], '/api')
++    assert.equal(h.calls.at(-1)[1], 'unrestricted/status')
++  } finally { h.dispose() }
++})
++
++test('卸载后迟到的状态响应不再写入旧视图', async () => {
++  const h = harness({ pending: true })
++  const view = h.face.hooks.view
++  const before = view.getSnapshot()
++  let notifications = 0
++  view.subscribe(() => notifications++)
++  h.dispose()
++  h.resolve()
++  await settle()
++  assert.equal(view.getSnapshot(), before)
++  assert.equal(notifications, 0)
++  assert.equal(h.styles.size, 0)
++})
+diff --git a/b/tests/manifest.spec.mjs b/tests/manifest.spec.mjs
+new file mode 100644
+index 0000000000..deb46f7ba0
+--- /dev/null
++++ b/tests/manifest.spec.mjs
+@@ -0,0 +1,18 @@
++import assert from 'node:assert/strict'
++import { readFile } from 'node:fs/promises'
++import { test } from 'node:test'
++
++const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
++
++test('declares the current master client renderer and settings dependencies', () => {
++  assert.deepEqual(manifest.dsh.client.inject, [
++    '@deepseek-ai/dsh-client-connection',
++    '@deepseek-ai/dsh-client-locale',
++    '@deepseek-ai/dsh-api-remotes',
++    '@deepseek-ai/dsh-client-ui-renderer',
++    '@deepseek-ai/dsh-client-ui-settings',
++    '@deepseek-ai/dsh-client-ui-plugin-manager',
++  ])
++  assert.equal(manifest.dsh.client.platform, 'web')
++  assert.equal(manifest.dsh.bundle.patch, './cordis.patch.yml')
++})
+diff --git a/b/tests/node.spec.mjs b/tests/node.spec.mjs
+new file mode 100644
+index 0000000000..e4cc48ad42
+--- /dev/null
++++ b/tests/node.spec.mjs
+@@ -0,0 +1,107 @@
++import assert from 'node:assert/strict'
++import test from 'node:test'
++import { apply } from '../src/node.js'
++import { INJECTION_KEY } from '../src/rules.js'
++
++function harness(initial = {}) {
++  let value = {
++    enabled: true,
++    targetPresets: ['creative'],
++    includeSubagents: false,
++    ...initial,
++  }
++  let watch
++  let listener
++  let statusRoute
++  const ctx = {
++    agentLoop: { requestInjectionsVersion: 2 },
++    settings: {
++      register: () => ({
++        get: () => value,
++        watch: callback => {
++          watch = callback
++          return () => {}
++        },
++      }),
++    },
++    agentPresets: { composedPreset: agentCtx => agentCtx.preset },
++    on: (name, callback) => {
++      if (name === 'agent/request-injections') listener = callback
++    },
++    effect: factory => { factory() },
++    inject: (_services, callback) => callback({
++      connection: { fetch: { register: (route) => {
++        statusRoute = route
++        return () => {}
++      } } },
++    }),
++  }
++  apply(ctx)
++  return {
++    statusRoute: () => statusRoute,
++    request: (preset, header = {}, downstream = []) => listener(
++      { agent: { ctx: { preset }, session: { header } } },
++      () => Promise.resolve(downstream),
++    ),
++    update(next) {
++      value = { ...value, ...next }
++      watch(value)
++    },
++  }
++}
++
++test('host contributes only to a targeted creative agent and preserves downstream order', async () => {
++  const host = harness()
++  const prior = {
++    key: 'prior', role: 'assistant', text: 'prior',
++    source: { kind: 'plugin', plugin: 'prior' },
++    placement: { kind: 'depth', depth: 0 },
++  }
++  assert.deepEqual(await host.request('standard', {}, [prior]), [prior])
++  const creative = await host.request('creative', {}, [prior])
++  assert.equal(creative.length, 2)
++  assert.equal(creative[0], prior)
++  assert.equal(creative[1].key, INJECTION_KEY)
++  assert.equal(creative[1].role, 'assistant')
++  assert.deepEqual(creative[1].placement, { kind: 'before-latest-user' })
++})
++
++test('settings changes take effect at the next request boundary', async () => {
++  const host = harness()
++  assert.equal((await host.request('creative')).length, 1)
++  host.update({ enabled: false })
++  assert.deepEqual(await host.request('creative'), [])
++  host.update({ enabled: true, targetPresets: ['story'] })
++  assert.deepEqual(await host.request('creative'), [])
++  assert.deepEqual((await host.request('story'))[0].placement, { kind: 'before-latest-user' })
++})
++
++test('subagent targeting stays opt-in', async () => {
++  const host = harness()
++  assert.deepEqual(await host.request('creative', { origin: 'subagent' }), [])
++  host.update({ includeSubagents: true })
++  assert.equal((await host.request('creative', { origin: 'subagent' })).length, 1)
++})
++
++test('fails loud when the DSH core lacks the request-injection protocol', () => {
++  assert.throws(() => apply({ agentLoop: {}, settings: {} }), /requestInjectionsVersion=2/)
++})
++
++
++test('状态通过共享 API 返回完整 RPC 响应，设置更新即时可见', async () => {
++  const host = harness()
++  const route = host.statusRoute()
++  assert.equal(route.path, '/api/unrestricted/status')
++  assert.deepEqual(route.methods, ['POST'])
++  assert.equal(route.requestBody, 'buffered')
++  const call = () => route.fetch(new Request('http://localhost/api/unrestricted/status', {
++    method: 'POST', body: JSON.stringify({ rpcId: 'status-test' }),
++  })).then(response => response.json())
++  const first = await call()
++  assert.equal(first.type, 'server-response')
++  assert.equal(first.rpcId, 'status-test')
++  assert.equal(first.result.value.compatible, true)
++  assert.equal(first.result.value.enabled, true)
++  host.update({ enabled: false })
++  assert.equal((await call()).result.value.enabled, false)
++})
+diff --git a/b/tests/rules.spec.mjs b/tests/rules.spec.mjs
+new file mode 100644
+index 0000000000..fa3cae049b
+--- /dev/null
++++ b/tests/rules.spec.mjs
+@@ -0,0 +1,52 @@
++import assert from 'node:assert/strict'
++import test from 'node:test'
++import {
++  CREATIVE_ASSISTANT_CONTEXT,
++  INJECTION_KEY,
++  REQUEST_INJECTIONS_VERSION,
++  creativeInjection,
++  targetsAgent,
++} from '../src/rules.js'
++
++const settings = {
++  enabled: true,
++  targetPresets: ['creative'],
++  includeSubagents: false,
++}
++
++test('declares one stable assistant-role latest-user injection', () => {
++  assert.equal(REQUEST_INJECTIONS_VERSION, 2)
++  assert.deepEqual(creativeInjection(), {
++    key: INJECTION_KEY,
++    role: 'assistant',
++    text: CREATIVE_ASSISTANT_CONTEXT,
++    source: { kind: 'plugin', plugin: 'dsh-unrestricted' },
++    placement: { kind: 'before-latest-user' },
++  })
++})
++
++test('the rating assumption never rewrites character age', () => {
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /18\+ rated creative context/)
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /classifies the work only/)
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /project files, prior drafts, examples, skills, or tool results/)
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /stale authoring guidance/)
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /not assign, infer, replace, retcon, omit, or "age up"/)
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /never resolve a conflict or an output limitation by changing/)
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /canon fact remains unchanged/)
++  assert.match(CREATIVE_ASSISTANT_CONTEXT, /not claim that a character is 18\+/)
++  assert.doesNotMatch(CREATIVE_ASSISTANT_CONTEXT, /force-defaulted/)
++  assert.doesNotMatch(CREATIVE_ASSISTANT_CONTEXT, /all characters are adults/i)
++})
++
++test('targets only configured presets while enabled', () => {
++  assert.equal(targetsAgent(settings, 'creative', {}), true)
++  assert.equal(targetsAgent(settings, 'standard', {}), false)
++  assert.equal(targetsAgent({ ...settings, enabled: false }, 'creative', {}), false)
++  assert.equal(targetsAgent({ ...settings, targetPresets: ['creative', 'story'] }, 'story', {}), true)
++})
++
++test('excludes subagents unless explicitly configured', () => {
++  assert.equal(targetsAgent(settings, 'creative', { origin: 'subagent' }), false)
++  assert.equal(targetsAgent(settings, 'creative', { delegationDepth: 1 }), false)
++  assert.equal(targetsAgent({ ...settings, includeSubagents: true }, 'creative', { origin: 'subagent' }), true)
++})
