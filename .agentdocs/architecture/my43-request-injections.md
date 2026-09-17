@@ -118,3 +118,14 @@ profile及共享profiles/node_modules由上游healProfilesModuleFallback在启�
 新补丁包括客户端源码、bundle/map与Node测试；测试直接加载交付JS，覆盖新插槽、默认展开、状态读写和卸载后的迟到请求。配置写入后立即刷新状态，移除固定延迟；样式和订阅由插件生命周期回收。旧bundle作为负对照因旧插槽失败。插件必须在与目标DSH一致的类型声明下构建和检查，不发布本地路径tsconfig或node_modules。
 
 alpha2的standard新增默认关闭的tool-plugin-manager声明，creative必须同步但保持disabled:true。官方Creator/cordis并非自用creative，不能套用其默认安装权限。alpha2 runtime依赖解析及HMR需要实际组合验收，不将目录软链接存在等同加载成功。
+
+
+## alpha2 定时任务与 Linux 资源边界
+
+`@opendsh/dsh-plugin-scheduled-tasks@0.2.4`（npm gitHead `dc4f88670c0e73f1db31799b818cad708c448afa`）在 alpha2 的浏览器注册失败：严格 codec 从 `schema` 改为 `create()`。配套 `scripts/patches/my43-scheduled-tasks-alpha2.patch` 以原 npm 安装包为基线，更新 Host、Client ESM 和已打包浏览器客户端的三类 codec，并保留输入输出校验。插件发布包不含 TS 源码，因此补丁明确作用于发布 JS；未来跟插件源码时同步迁移 `src/typert.ts` 与 `src/client/typert-remote.ts` 的 codec helper，不能重建后丢掉适配。
+
+真实执行还暴露 executor 依赖已移除的 `session.events`。兼容版本 `0.2.4+my43.alpha2.1` 改为观察当前运行的 `session/event`，增量保留最后非空输出和回合结果，成功/异常都注销观察者；不新增已弃用的同步历史读取。补丁包含三个真实 registry/codec 测试及两个执行/清理测试，原客户端与原 executor 负对照失败。调度器和存储字节保持原样，部署仍须验证禁用任务的 CRUD、手动真实执行和历史结果，不能仅以 tasks/list 成功判定兼容。
+
+本轮 Linux 全安装直接 npm install 两次触及1.2GiB硬上限；中断残留目录又导致 ENOTEMPTY。有效流程是保留旧失败目录、先 `npm install --package-lock-only --prefer-offline --ignore-scripts --legacy-peer-deps`，再 `npm ci --prefer-offline --ignore-scripts --legacy-peer-deps`。隔离 unit 最终采用 MemoryHigh=1500M、MemoryMax=1800M、MemorySwapMax=256M、CPUQuota=150%，NODE_OPTIONS=--max-old-space-size=384、npm_config_maxsockets=2。全安装752包，约1.4GiB内存峰值和256MiB swap；锁文件留在release。不能把这些安装峰值当成DSH日常运行占用，也不应在受限服务器源码构建。
+
+Linux Office WASM 小文档转换约5秒，转换后RSS约740MiB，进程峰值约1.3GiB，因此my43 profile使用 `office-to-pdf.config.maxConcurrentConversions: 1`。只看PDF签名和文字提取不足以验收中文：机器原来没有中文字体，PDF可以提取中文但画面空缺。安装 `fonts-noto-cjk` 与 `fontconfig`，重建转换器后中文实际渲染通过。字体为系统运行依赖，不打包macOS引擎。
