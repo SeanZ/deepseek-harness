@@ -9,8 +9,9 @@
 - [x] 核对远端实际插件插槽，给出升级前必做项。
 - [x] 阶段一：合并固定alpha2标签，解决生成目录冲突，适配creative和unrestricted源码/制品。
 - [x] 阶段二：核心注入、历史迁移、插件启停/设置、SDK及真实creative请求、页面/终端回归；lint、类型和文档检查。
-- [ ] 阶段三：commit，本地正式构建与打包，Linux npm隔离安装；Office、PTY、认证、历史及产物一致性验收。
-- [ ] 阶段四：确认无运行会话，备份与切换生产，回读服务、认证、数据和插件状态；push dev，等待用户页面验收。
+- [x] 阶段三：commit，本地正式构建与打包，Linux npm隔离安装；Office、PTY、认证、历史及产物一致性验收。
+- [x] 阶段四：确认无运行会话，备份与切换生产，回读服务、认证、数据和插件状态；push dev。
+- [ ] 用户页面人工验收；确认后归档本任务。
 
 ## 固定版本与合并结果
 
@@ -24,9 +25,9 @@
 
 预合并组合经 YAML 结构比较确认 creative 与 standard 不再相等：standard 新增 `tool-plugin-manager`，入口 `@deepseek-ai/dsh-plugin-manager/tools`，默认 disabled:true。同步时保留默认关闭，避免无意给 creative 开放安装插件的工具。官方 Creator（cordis preset）改用持久插件管理，与自用 creative 不是同一个预设。
 
-远端 systemctl dsh 为 active，current 仍为20260915-alpha1-prompt-fix。实际加载的 dsh-unrestricted 0.3.0 client bundle包含 `settings.plugin.item`；alpha2 已移除该插槽声明/消费入口。其配置卡片必须改用新版合适入口；外部 bundle优先评估 `plugins.bundle.config`（按包名）或 `plugins.row.config`（按包名#行id），不要机械注册进面向官方配置项的 `plugins.item`。源码与发布bundle一起适配，覆盖显示、读写和卸载重载。此界面不兼容不等同主机注入失效，主机注入仍需独立测试。
+评估时远端 systemctl dsh 为 active，current 为20260915-alpha1-prompt-fix。实际加载的 dsh-unrestricted 0.3.0 client bundle包含 `settings.plugin.item`；alpha2 已移除该插槽声明/消费入口。其配置卡片必须改用新版合适入口；外部 bundle优先评估 `plugins.bundle.config`（按包名）或 `plugins.row.config`（按包名#行id），不要机械注册进面向官方配置项的 `plugins.item`。源码与发布bundle一起适配，覆盖显示、读写和卸载重载。此界面不兼容不等同主机注入失效，主机注入仍需独立测试。
 
-alpha2 默认 profile resolutionMode=runtime，并引入插件管理、热卸载与重组。必须验证 file依赖安装副本、插件依赖声明、外部unrestricted和scheduled-tasks实际加载、重复启停无残留；此前仅检查共享node_modules软链接的验收不足以证明新解析正常。vendor/loader与logger也变更，构建不能复用旧vendor当作完整新版。
+alpha2 默认 profile resolutionMode=runtime，并引入插件管理、热卸载与重组。必须验证 file依赖安装副本、插件依赖声明、外部unrestricted实际加载（用户随后明确移除scheduled-tasks）、重复启停无残留；此前仅检查共享node_modules软链接的验收不足以证明新解析正常。vendor/loader与logger也变更，构建不能复用旧vendor当作完整新版。
 
 ## 手机问题证据边界
 
@@ -54,13 +55,22 @@ Web用户终端调整为系统用户权限，独立于Agent沙箱。host/webserv
 
 合并已完成代码适配，未提交时先完成普通构建。核心首轮160项通过，仓库引用检查11项通过；扩展回归2426项通过，剩余终端bundle测试在构建后通过，插件管理真实安装测试固定可执行pnpm11.7.0后通过。Corepack在临时目录默认选择10.34.5，Homebrew还有9.14.4，测试必须显式选本任务toolbin中的pnpm.mjs；不能把旧版本结果当成产品失败。上游已补齐webworker夹具的get方法，删除本分支合并产生的重复字段。
 
-unrestricted13项通过，类型检查通过，新入口测试用旧线上bundle作负对照失败、新bundle通过。全构建、lint通过；doc-sync39项通过，另外两项为生成事件表中英同步与架构文档超2词，修复后分别复验通过。TypeScript SDK快照和Python SDK注入/请求/通知/持久化夹具通过。真实V4 Pro/Low完成六次文件读取、一个initial头、一份system和一份注入。页面验证新版配置卡片可见，设置开关写入及刷新持久化通过，页面错误为零；实际组合两轮卸载/重载通过。Linux制品和真实历史样本阶段尚在进行。
+unrestricted13项通过，类型检查通过，新入口测试用旧线上bundle作负对照失败、新bundle通过。全构建、lint通过；doc-sync39项通过，另外两项为生成事件表中英同步与架构文档超2词，修复后分别复验通过。TypeScript SDK快照和Python SDK注入/请求/通知/持久化夹具通过。真实V4 Pro/Low完成六次文件读取、一个initial头、一份system和一份注入。页面验证新版配置卡片可见，设置开关写入及刷新持久化通过，页面错误为零；实际组合两轮卸载/重载通过。Linux制品和真实历史样本验收见下节。
 
 
 ## Linux 隔离验收进展
 
 正式核心制品提交56de5799d8已push dev。首次304包4668文件一致，Linux原生文件锁、koffi、PTY和ripgrep通过；landlock为既有partial能力。复制113个生产日志文件，前后哈希一致。旧格式9样本迁移和近期三个工作区各3样本追加重开全部通过，近期含用户指明的session-84e60464；5条已有不支持旧格式记录保持原件，未修写。
 
-真实creative六次读取通过：一个initial头、一份system、一份注入。unrestricted两轮卸载/重载通过。页面配置开关与刷新持久化通过，原生终端输入及刷新同一PID/环境保留通过。定时任务客户端首次失败与真实执行返回events不可迭代已定位并适配；最终插件包0.2.4+my43.alpha2.1待再次真实执行验收。最终安装库存增加到305包4709文件，制品一致性需在最后一次插件替换后复验。
+真实creative六次读取通过：一个initial头、一份system、一份注入。unrestricted两轮卸载/重载通过。页面配置开关与刷新持久化通过，原生终端输入及刷新同一PID/环境保留通过。定时任务的codec与执行历史接口不兼容曾完成适配验证；用户随后明确不再使用该插件，最终从生产和制品移除，并撤销本分支兼容补丁。最终304包4668文件逐字节复验通过，PTY字节保持不变。
 
-Office已验证WASM转换、缓存复用、共享Remote文件读取和PDF返回；实际图片验收发现中文缺字，补装Noto CJK与fontconfig后画面正常。profile限制Office并发1。安装内存限制、失败残留与锁文件流程见架构文档；当前生产尚未切换。
+Office已验证WASM转换、缓存复用、共享Remote文件读取和PDF返回；实际图片验收发现中文缺字，补装Noto CJK与fontconfig后画面正常。profile限制Office并发1。安装内存限制、失败残留与锁文件流程见架构文档；生产已切换，部署结果见下节。
+
+
+## 生产部署与卸载验收
+
+生产 current 为 `/home/ubuntu/dsh-releases/20260918-alpha2`，CLI版本0.1.6-alpha.2。完整升级备份 `/home/ubuntu/dsh-backups/20260918-025100-pre-alpha2`；旧alpha1 release保留。切换即时116个持久数据文件哈希完全一致，无新增恢复标记；Caddy、systemd、bootstrap配置哈希不变，默认模型未修改。
+
+用户授权移除定时任务后，先确认83个会话均未运行，再备份profile、release清单/锁文件、插件安装包和任务存储，删除profile注册与链接，并通过受限npm卸载依赖。生产profile仅保留base、web、unrestricted；共享fallback、profile链接、安装目录和锁文件均无定时任务插件。原scheduled_tasks.json哈希不变。无需为插件重建DSH核心。
+
+重启后服务active、NRestarts=0；匿名直连401、bootstrap303、旧cookie200、可信Origin200、不可信Origin403。unrestricted启用且注入协议版本2，83个会话无运行中。公网页面、bootstrap、终端、插件管理、Office与媒体入口匿名请求均经Authelia跳转。生产浏览器已确认插件列表无定时任务入口，unrestricted设置卡片开启且无页面异常。浏览器自动验收使用SSH隧道对应authority重新兑换cookie，不能复用3080端口cookie到43820；不等同用户密码/MFA登录验收。页面打开后1条已有会话追加空载荷session/end-seed，原压缩字节前缀不变，新增帧独立解码后仅该事件，其余115个数据文件哈希不变。

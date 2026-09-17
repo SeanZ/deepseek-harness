@@ -38,7 +38,7 @@ alpha 的 loopback 启动 URL 格式兼容现有脚本，本地真实 CLI 测试
 
 首次部署前，生产 `dsh.service` 直接通过 `/usr/local/bin/node` 启动旧仓库 `apps/cli/lib/bin.js`，工作目录 `/home/ubuntu/workspace/zx-n`，DSH_HOME `/home/ubuntu/.dsh`，DSH_AGENTS_HOME `/home/ubuntu/.agents`。未来产物可置于 `/home/ubuntu` 下独立 releases 目录，通过 current 软链接选版本，ExecStart 直接指向产物中的 CLI。只调整必要的启动路径，保留端口 3080、trusted-host、用户、home、工作目录与安全限制；保留 `20-google-provider-ipv4.conf` 和 `30-caddy-bootstrap.conf`。后者以提升权限的 ExecStartPost 刷新引导页，但失败被忽略，不能仅凭 systemd active 判断登录链路正常；必须检查本次 invocation 的成功日志与实际 HTTPS 引导。
 
-后续部署前先在独立 home/端口验证最终 Linux 产物和插件，再停服务对生产 home、profile 与配置做一致快照，切换产物后检查完整 Authelia → bootstrap → DSH cookie → API/流式响应链路。回滚需同时考虑运行版本、插件/profile 和会话数据快照；旧 generation 保留并不保证旧程序可读取升级后的 home，回滚快照会舍弃切换后新增数据，不能只承诺切回软链接即可无损降级。完整 profile 应覆盖 sidebar 与 scheduled-tasks 的兼容验证；旧 context 已按用户授权从目标 profile 移除。
+后续部署前先在独立 home/端口验证最终 Linux 产物和插件，再停服务对生产 home、profile 与配置做一致快照，切换产物后检查完整 Authelia → bootstrap → DSH cookie → API/流式响应链路。回滚需同时考虑运行版本、插件/profile 和会话数据快照；旧 generation 保留并不保证旧程序可读取升级后的 home，回滚快照会舍弃切换后新增数据，不能只承诺切回软链接即可无损降级。完整 profile 应覆盖当前启用的插件；Context、Better Sidebar 和定时任务插件已按用户授权移除，不再为定时任务维护兼容补丁。
 
 本节记录部署设计约束；执行状态以当前任务文档为准。
 
@@ -58,7 +58,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260915-alpha1-prompt-fix`，核心为 patched `0.1.6-alpha.1`，制品提交 `194d2b5603c0067ce9a89b44feeb288a55af1ce1`。外部插件装在 release 内，web profile 的两项依赖（unrestricted、scheduled-tasks）与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260918-alpha2`，核心为 patched `0.1.6-alpha.2`，制品提交 `56de5799d878a3f3317e2e335e2f05f02ed421be`。外部插件仅保留 `dsh-unrestricted@0.3.0+my43.alpha2`，web profile 的依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -92,7 +92,7 @@ rc.1 切换前备份位于 `/home/ubuntu/dsh-backups/20260910-142508-pre-rc1`，
 
 历史验证分两组：原9条旧格式样本的首次写入迁移和重开；当前生产会话快照中三个工作区各取3条近期会话进行读写回放。后者87个源文件保持不变；扫描仍明确报告原有5条不兼容日志，不删除未知字段绕过校验。证据保存在忽略目录 `.artifacts/my43-rc2` 和远端隔离 home `/home/ubuntu/dsh-canary/20260911-rc2`。
 
-会话恢复可能正常追加空 payload 的 `session/end-seed`；`Session` 构造器在恢复日志末尾不是该事件时写入，rc.1/rc.2 的逻辑相同。因此服务重启后的全文件哈希变化不必然表示旧历史被改写，必须保留快照并逐项核对原始压缩字节前缀、解压后的完整旧事件及新事件类型；不得无条件放行追加。本次首次切换因该标记触发严格校验并自动回退，确认只有一条正常标记后保留数据，再次切换通过原严格校验（89个数据文件不变）。恢复相关83项既有测试通过。
+会话恢复可能正常追加空 payload 的 `session/end-seed`；`Session` 构造器在恢复日志末尾不是该事件时写入，rc.1/rc.2 的逻辑相同。因此服务重启后的全文件哈希变化不必然表示旧历史被改写，必须保留快照并逐项核对原始压缩字节前缀、解压后的完整旧事件及新事件类型；不得无条件放行追加。Node 22的zstdDecompressSync在此次实际拼接文件上只解出首帧，因此不能用全文件同步解码的相等结果证明没有追加事件；先验证原压缩字节前缀，再独立解码新增帧，或使用覆盖所有帧的流式解码。本次首次切换因该标记触发严格校验并自动回退，确认只有一条正常标记后保留数据，再次切换通过原严格校验（89个数据文件不变）。恢复相关83项既有测试通过。
 
 rc.2 的一致备份 `/home/ubuntu/dsh-backups/20260911-012012-pre-rc2`，首次回退备份 `/home/ubuntu/dsh-backups/20260911-011756-pre-rc2`，旧 release `20260910-rc1-2c122992` 保留。服务配置、Caddy 与启动脚本哈希不变；web profile 三项依赖和链接均指向新 release。公网检查用 `Accept: text/html` 验证四个入口302至 `auth.zxh.tackd.net`；无HTML Accept的请求可能返回401并带登录Location，这是Authelia的内容协商，不应误判成浏览器认证故障。完整用户登录体验仍由页面人工验收确认。
 
@@ -120,11 +120,9 @@ profile及共享profiles/node_modules由上游healProfilesModuleFallback在启�
 alpha2的standard新增默认关闭的tool-plugin-manager声明，creative必须同步但保持disabled:true。官方Creator/cordis并非自用creative，不能套用其默认安装权限。alpha2 runtime依赖解析及HMR需要实际组合验收，不将目录软链接存在等同加载成功。
 
 
-## alpha2 定时任务与 Linux 资源边界
+## alpha2 插件选择与 Linux 资源边界
 
-`@opendsh/dsh-plugin-scheduled-tasks@0.2.4`（npm gitHead `dc4f88670c0e73f1db31799b818cad708c448afa`）在 alpha2 的浏览器注册失败：严格 codec 从 `schema` 改为 `create()`。配套 `scripts/patches/my43-scheduled-tasks-alpha2.patch` 以原 npm 安装包为基线，更新 Host、Client ESM 和已打包浏览器客户端的三类 codec，并保留输入输出校验。插件发布包不含 TS 源码，因此补丁明确作用于发布 JS；未来跟插件源码时同步迁移 `src/typert.ts` 与 `src/client/typert-remote.ts` 的 codec helper，不能重建后丢掉适配。
-
-真实执行还暴露 executor 依赖已移除的 `session.events`。兼容版本 `0.2.4+my43.alpha2.1` 改为观察当前运行的 `session/event`，增量保留最后非空输出和回合结果，成功/异常都注销观察者；不新增已弃用的同步历史读取。补丁包含三个真实 registry/codec 测试及两个执行/清理测试，原客户端与原 executor 负对照失败。调度器和存储字节保持原样，部署仍须验证禁用任务的 CRUD、手动真实执行和历史结果，不能仅以 tasks/list 成功判定兼容。
+用户明确不再使用 `@opendsh/dsh-plugin-scheduled-tasks`，因此从生产 web profile、release 依赖和锁文件卸载，并删除本分支新增的 alpha2 兼容补丁。后续制品不携带该插件，不能在升级时按旧 profile 自动装回。原存储 `/home/ubuntu/.dsh/storages/scheduled_tasks.json` 保留且哈希不变；卸载前 profile、依赖清单和已安装包备份在 `/home/ubuntu/dsh-backups/20260917-185718-remove-scheduled`。DSH 内置 schedule 能力不属于这次外部插件卸载范围。
 
 本轮 Linux 全安装直接 npm install 两次触及1.2GiB硬上限；中断残留目录又导致 ENOTEMPTY。有效流程是保留旧失败目录、先 `npm install --package-lock-only --prefer-offline --ignore-scripts --legacy-peer-deps`，再 `npm ci --prefer-offline --ignore-scripts --legacy-peer-deps`。隔离 unit 最终采用 MemoryHigh=1500M、MemoryMax=1800M、MemorySwapMax=256M、CPUQuota=150%，NODE_OPTIONS=--max-old-space-size=384、npm_config_maxsockets=2。全安装752包，约1.4GiB内存峰值和256MiB swap；锁文件留在release。不能把这些安装峰值当成DSH日常运行占用，也不应在受限服务器源码构建。
 
