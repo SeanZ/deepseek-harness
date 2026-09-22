@@ -24,14 +24,21 @@ const rows = [
 ]
 
 describe('历史请求注入迁移', () => {
-  it.each([0, 1, 2])('V%s 读取不写盘，写入只创建 V3，重开保留声明', async (version) => {
+  it.each([0, 1, 2, 3])('V%s 读取不写盘，写入只创建 V4，重开保留声明', async (version) => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-injections-migration-'))
     const ctx = new Context()
     try {
       const id = SessionId('legacy-injections')
       const path = generationLogPath(root, undefined, id, version, 'none')
       await mkdir(dirname(path), { recursive: true })
-      const original = [{ type: 'session', version, id, createdAt: 1, ...(version === 2 ? { isSeeded: false } : {}), delegationDepth: 0 }, ...rows.map((row, seq) => ({ ...row, seq, time: seq + 10 }))].map(row => JSON.stringify(row)).join('\n') + '\n'
+      const sourceRows = version === 3 ? [
+        rows[0]!, rows[1]!,
+        { type: 'system/message', surfaceOp: 'append', data: { turn: 1, step: 1, message: { id: 'system-v3', role: 'system', source: { kind: 'plugin', plugin: '@deepseek-ai/dsh-system-prompt' }, content: [{ type: 'text', text: '旧系统提示词' }] } } },
+        rows[2]!, rows[3]!,
+        { type: 'request/header', data: { header: { config: { provider: 'mock', model: 'mock' } }, reason: 'initial' } },
+        rows[5]!, rows[6]!,
+      ] : rows
+      const original = [{ type: 'session', version, id, createdAt: 1, ...(version >= 2 ? { isSeeded: false } : {}), delegationDepth: 0 }, ...sourceRows.map((row, seq) => ({ ...row, seq, time: seq + 10 }))].map(row => JSON.stringify(row)).join('\n') + '\n'
       await writeFile(path, original)
       await ctx.plugin(JsonlSessionPersistence, { root, compression: 'none' })
       const reader = await ctx.sessionPersistence.open(id, 'read')
@@ -50,7 +57,7 @@ describe('历史请求注入迁移', () => {
       expect((await readdir(dirname(path))).filter(name => name.endsWith('.jsonl'))).toHaveLength(2)
       const reopened = await ctx.sessionPersistence.open(id, 'read')
       try {
-        expect(reopened.header.version).toBe(3)
+        expect(reopened.header.version).toBe(4)
         expect(foldRequestMessageInjections((await reopened.read()).events)).toEqual([injection])
       } finally { await reopened.close() }
     } finally {

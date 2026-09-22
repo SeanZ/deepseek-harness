@@ -85,7 +85,7 @@ describe('request injection materialization', () => {
     expect(result[2]).toMatchObject({
       id: 'request-injection:a',
       role: 'assistant',
-      source: { kind: 'plugin', plugin: 'test-injections' },
+      source: { kind: 'plugin:request-injection', plugin: 'test-injections' },
     })
   })
 
@@ -124,7 +124,7 @@ describe('request injection materialization', () => {
       createMessage({
         role: 'user',
         content: [{ type: 'text', text: 'skill instructions' }],
-        source: { kind: 'plugin', plugin: 'test-skill' },
+        source: { kind: 'system-prompt' },
       }),
     ]
     for (let step = 1; step <= 5; step += 1) {
@@ -152,7 +152,7 @@ describe('request injection materialization', () => {
     const messages: Message[] = [createMessage({
       role: 'user',
       content: [{ type: 'text', text: 'plugin context' }],
-      source: { kind: 'plugin', plugin: 'test-context' },
+      source: { kind: 'system-prompt' },
     })]
     expect(() => materializeRequestMessages(messages, [beforeLatestUser('missing')]))
       .toThrow('requires a human-authored user message')
@@ -171,8 +171,20 @@ describe('request injection materialization', () => {
 })
 
 it('超大 depth 也不能越过 V3 系统首消息', () => {
-  const head = createSystemMessage('系统说明', 'test')
+  const head = createSystemMessage('系统说明')
   const result = materializeRequestMessages([head, user('问题')], [injection('deep', 100)])
   expect(result.map(message => message.role)).toEqual(['system', 'assistant', 'user'])
   expect(result[0]).toBe(head)
+})
+
+
+it('V4 工具结果必须匹配调用 ID，不能只以数量判断完整边界', () => {
+  const callId = ToolCallId('expected')
+  const call = createMessage({
+    role: 'assistant', content: [{ type: 'tool-call', id: callId, name: 'echo', arguments: '{}' }],
+    source: { kind: 'model', provider: 'mock', model: 'mock' },
+  })
+  const wrong = createToolResultMessage({ callId: ToolCallId('wrong'), content: [], isError: false })
+  expect(() => materializeRequestMessages([user('question'), call, wrong], [injection('x', 0)]))
+    .toThrow('unmatched tool result')
 })

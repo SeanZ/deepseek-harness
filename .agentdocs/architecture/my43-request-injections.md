@@ -2,7 +2,7 @@
 
 ## 补丁边界
 
-当前维护目标为官方 `dsh-v0.1.6-alpha.2`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
+当前维护目标为官方 `dsh-v0.1.7-alpha.1`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
 
 `request/injections` 是 required 持久事件，不属于聊天历史节点。发送前记录、按日志重建；重试重新读取声明，准备阶段取消不提交用户输入或注入。稳定注入保持同一请求序列；快照改变时开始新请求序列，让 alpha 的系统消息策略与可能发生位置变化的请求一致；因此不能承诺跨请求前缀缓存连续性。token-meter 将注入计入请求占用，单独保留历史节点计量；声明变化使旧 usage 锚点失效。
 
@@ -127,3 +127,11 @@ alpha2的standard新增默认关闭的tool-plugin-manager声明，creative必须
 本轮 Linux 全安装直接 npm install 两次触及1.2GiB硬上限；中断残留目录又导致 ENOTEMPTY。有效流程是保留旧失败目录、先 `npm install --package-lock-only --prefer-offline --ignore-scripts --legacy-peer-deps`，再 `npm ci --prefer-offline --ignore-scripts --legacy-peer-deps`。隔离 unit 最终采用 MemoryHigh=1500M、MemoryMax=1800M、MemorySwapMax=256M、CPUQuota=150%，NODE_OPTIONS=--max-old-space-size=384、npm_config_maxsockets=2。全安装752包，约1.4GiB内存峰值和256MiB swap；锁文件留在release。不能把这些安装峰值当成DSH日常运行占用，也不应在受限服务器源码构建。
 
 Linux Office WASM 小文档转换约5秒，转换后RSS约740MiB，进程峰值约1.3GiB，因此my43 profile使用 `office-to-pdf.config.maxConcurrentConversions: 1`。只看PDF签名和文字提取不足以验收中文：机器原来没有中文字体，PDF可以提取中文但画面空缺。安装 `fonts-noto-cjk` 与 `fontconfig`，重建转换器后中文实际渲染通过。字体为系统运行依赖，不打包macOS引擎。
+
+## 0.1.7-alpha.1 迁移契约
+
+V4的工具结果是独立tool角色，按消息层toolCallId匹配，不能再按旧内容块计数。request/injections仍为required声明快照，并加入V3相邻迁移白名单；声明载荷保持原plugin来源，物化时转为RequestInjectionMessage，属于RequestMessage而不属于持久Message。两种模型适配器均把它作为外部assistant历史，不能伪装成带重放状态的模型输出。
+
+creative由packages/bundle/web-app/presets/creative.patch.yml注册；每次升级对比standard的完整plugins配置，保持id不变。unrestricted升级补丁my43-unrestricted-017a1.patch以线上alpha2安装副本为基线，迁移为Config volatile字段与客户端configForms接口。部署前须完成插件适配，再允许旧settings.yaml自动导入；先将agent-presets.default转换为agent-preset-registry.selectedDefault，避免旧section无法匹配新entry。逐项比较导入值，保留原默认模型及凭据。旧agent-team-web-profile退出bundles，新的agent-team-profile同时提供Host与Web。
+
+V4升级失败后须停服保全新home，再恢复一致的旧home/profile和旧release。不可只切current软链接而让alpha2读取V4或已迁移的profile；切换后的用户新增数据必须保留供人工决策。发布备份、制品标识及实际验收见当前任务文档。

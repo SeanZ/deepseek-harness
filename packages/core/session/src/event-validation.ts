@@ -52,11 +52,10 @@ function validateSessionHeader(id: SessionId, input: unknown): SessionHeader {
   return deepFreeze(record as unknown as SessionHeader)
 }
 
-/**
- * 原地校验并冻结独占的持久化头部。
+/** 校验并冻结由调用方独占的持久化头部。
  * @param id - 预期会话标识。
- * @param input - 调用方转交独占所有权的头部。
- * @returns 校验并冻结后的头部；非法数据抛出异常。
+ * @param input - 待校验的头部。
+ * @returns 已校验并冻结的头部。
  */
 export function validateRestoredSessionHeader(id: SessionId, input: unknown): SessionHeader {
   if (input !== null && typeof input === 'object' && !Array.isArray(input)) {
@@ -68,11 +67,10 @@ export function validateRestoredSessionHeader(id: SessionId, input: unknown): Se
   return validateSessionHeader(id, input)
 }
 
-/**
- * 复制、校验并冻结会话创建元数据。
- * @param id - 预期会话标识。
- * @param source - 可选创建元数据。
- * @returns 独立且冻结的头部；非法数据抛出异常。
+/** 复制、校验并冻结会话创建元数据。
+ * @param id - 会话标识。
+ * @param source - 可选的已有头部。
+ * @returns 与输入隔离的不可变头部。
  */
 export function snapshotSessionHeader(id: SessionId, source?: SessionHeader): SessionHeader {
   const input: unknown = source === undefined
@@ -103,6 +101,7 @@ export function adoptSessionEvent<T extends SessionEvent>(event: T): T {
     case 'user/message':
       deepFreeze(event.data)
       break
+    case 'developer/message':
     case 'system/message':
     case 'assistant/message':
     case 'tool/result':
@@ -124,11 +123,10 @@ export function snapshotSessionEvent<T extends SessionEvent>(event: T): T {
   return adoptSessionEvent(structuredClone(event))
 }
 
-/**
- * 校验 JSON 解码后的事件信封；非法字段抛出异常。
- * @param value - 待校验事件。
- * @param index - 用于错误定位的事件下标。
- * @returns 校验通过后将输入收窄为 SessionEvent。
+/** 校验 JSON 解码后的事件封装。
+ * @param value - 待校验的事件。
+ * @param index - 事件在日志中的位置。
+ * @returns 校验成功时将输入收窄为会话事件。
  */
 export function assertSessionEventEnvelope(value: unknown, index: number): asserts value is SessionEvent {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -162,6 +160,7 @@ export function assertSessionEventEnvelope(value: unknown, index: number): asser
   validateSessionEventData(event as SessionEvent, `seed ${type} at index ${index}`)
   switch (type) {
     case 'request/header':
+    case 'developer/message':
     case 'system/message':
     case 'user/message':
     case 'assistant/attempt':
@@ -245,17 +244,18 @@ function assertAdapterDefaults(
   }
 }
 
-/** The four surface event types whose payload carries an identified message. */
+/** The surface event types whose payload carries an identified message. */
 function isMessageEventType(type: unknown): type is SurfaceEventType {
-  return type === 'system/message' || type === 'user/message'
+  return type === 'developer/message' || type === 'system/message' || type === 'user/message'
     || type === 'assistant/message' || type === 'tool/result'
 }
 
 const MESSAGE_ROLE_BY_TYPE: Record<SurfaceEventType, Message['role']> = {
   'system/message': 'system',
+  'developer/message': 'developer',
   'user/message': 'user',
   'assistant/message': 'assistant',
-  'tool/result': 'user',
+  'tool/result': 'tool',
 }
 
 /** Validate only the event-specific invariants needed to safely replay a message. */
@@ -288,9 +288,8 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
   }
   const sourceRecord = source as Record<string, unknown>
   if (type === 'system/message') {
-    if (sourceRecord['kind'] !== 'plugin' || typeof sourceRecord['plugin'] !== 'string'
-      || sourceRecord['plugin'] === '') {
-      throw new Error(`${subject} message must have plugin source`)
+    if (sourceRecord['kind'] !== 'system-prompt') {
+      throw new Error(`${subject} message must have system-prompt source`)
     }
     return
   }
@@ -306,14 +305,7 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
     || sourceRecord['callId'] === '') {
     throw new Error(`${subject} message must have tool source`)
   }
-  const content = messageRecord['content'] as unknown[]
-  const block = content[0]
-  if (content.length !== 1 || typeof block !== 'object' || block === null
-    || (block as Record<string, unknown>)['type'] !== 'tool-result'
-    || !Array.isArray((block as Record<string, unknown>)['content'])) {
-    throw new Error(`${subject} message must contain one tool-result block`)
-  }
-  if ((block as Record<string, unknown>)['toolCallId'] !== sourceRecord['callId']) {
+  if (messageRecord['toolCallId'] !== sourceRecord['callId']) {
     throw new Error(`${subject} message has mismatched tool call ids`)
   }
 }

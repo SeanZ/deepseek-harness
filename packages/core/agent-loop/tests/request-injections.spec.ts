@@ -69,7 +69,7 @@ describe('持久请求注入', () => {
     for (const request of [...first.requests, ...second.requests]) {
       expect(request.messages[0]?.role).toBe('system')
       const index = request.messages.findIndex(message => message.id === 'request-injection:guidance')
-      expect(index).toBe(request.messages.findLastIndex(message => message.role === 'user' && message.source.kind === 'user') - 1)
+      expect(index).toBe(request.messages.findLastIndex(message => message.role === 'user' && message.source?.kind === 'user') - 1)
       expect(Object.isFrozen(request.messages[index])).toBe(true)
     }
     expect(agent.session.deriveMessages().some(message => message.id === 'request-injection:guidance')).toBe(false)

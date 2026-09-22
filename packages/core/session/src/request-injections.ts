@@ -5,7 +5,7 @@
 
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
-import type { Message } from '@deepseek-ai/dsh-llm'
+import type { Message, RequestInjectionMessage, RequestMessage } from '@deepseek-ai/dsh-llm'
 import { assertNever, deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type { RequestMessageInjection, SessionEvent } from './types.ts'
 
@@ -126,30 +126,32 @@ export function foldRequestMessageInjections(
 /** 统计消息切分处的未完成工具调用，只返回完整交互的边界。 */
 function balancedCuts(messages: readonly Message[]): number[] {
   const cuts = [0]
-  let pending = 0
+  const pending = new Set<string>()
   messages.forEach((message, index) => {
-    for (const block of message.content) {
-      if (block.type === 'tool-call') pending += 1
-      else if (block.type === 'tool-result') pending -= 1
-      if (pending < 0) {
+    if (message.role === 'tool') {
+      if (!pending.delete(message.toolCallId)) {
         throw new Error(`request injection materialization found an unmatched tool result at message ${index}`)
       }
+    } else {
+      for (const block of message.content) {
+        if (block.type === 'tool-call') pending.add(block.id)
+      }
     }
-    if (pending === 0) cuts.push(index + 1)
+    if (pending.size === 0) cuts.push(index + 1)
   })
-  if (pending !== 0) {
-    throw new Error(`request injection materialization found ${pending} unanswered tool call(s)`)
+  if (pending.size !== 0) {
+    throw new Error(`request injection materialization found ${pending.size} unanswered tool call(s)`)
   }
   return cuts
 }
 
 /** 由声明构造标识稳定的请求专用 assistant 消息。 */
-function injectionMessage(injection: RequestMessageInjection): Message {
+function injectionMessage(injection: RequestMessageInjection): RequestInjectionMessage {
   return deepFreeze({
     id: brandString<MessageId>(`request-injection:${injection.key}`),
     role: 'assistant',
     content: [{ type: 'text', text: injection.text }],
-    source: injection.source,
+    source: { kind: 'plugin:request-injection', plugin: injection.source.plugin },
   })
 }
 
@@ -192,18 +194,18 @@ function placementCut(
 export function materializeRequestMessages(
   messages: readonly Message[],
   injections: readonly RequestMessageInjection[],
-): Message[] {
+): RequestMessage[] {
   if (injections.length === 0) return [...messages]
   const canonical = canonicalRequestMessageInjections(injections)
   const cuts = balancedCuts(messages)
-  const groups = new Map<number, Message[]>()
+  const groups = new Map<number, RequestInjectionMessage[]>()
   for (const injection of canonical) {
     const cut = placementCut(messages, cuts, injection)
     const group = groups.get(cut)
     if (group === undefined) groups.set(cut, [injectionMessage(injection)])
     else group.push(injectionMessage(injection))
   }
-  const result: Message[] = []
+  const result: RequestMessage[] = []
   for (let index = 0; index <= messages.length; index++) {
     const group = groups.get(index)
     if (group !== undefined) result.push(...group)
