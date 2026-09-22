@@ -16,6 +16,7 @@ it('Web bundle 注册独立的 creative 声明，插件组合与 standard 一致
     config: { id: 'creative', name: '勇于创作', order: 5 },
   })
   expect((creative[0]!.config as PresetDefinition).plugins).toEqual((standard[0]!.config as PresetDefinition).plugins)
-  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { dsh: { bundle: { patch: string[] } } }
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { files: string[]; dsh: { bundle: { patch: string[] } } }
   expect(manifest.dsh.bundle.patch).toContain('./presets/creative.patch.yml')
+  for (const patch of manifest.dsh.bundle.patch) expect(manifest.files).toContain(patch.replace(/^\.\//, ''))
 })

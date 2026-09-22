@@ -54,3 +54,6 @@ unrestricted以线上0.3.0+my43.alpha2安装副本为基线，改用Config volat
 真实历史：从my43复制113个近期文件，复制前后哈希相等；zx-n、agent、apps各3条近期会话及原9条旧格式样本均通过读取、V4写入、追加、重开和模型历史/注入相等检查，原文件未改变。扫描仍拒绝原有5条不兼容旧日志，不删除字段或放宽规则。包括用户曾报告系统卡片问题的session-84e60464-d4c4-431d-8f67-9ff5b105fd11。
 
 本地完整组合已启动于随机loopback端口，独立home下的6个旧settings section已进入新profile。旧agent-presets.default必须先显式转换为agent-preset-registry.selectedDefault，新版内置导入不会替我们转换；其余原样导入。真实模型、Linux制品、浏览器、认证与生产切换仍在后续阶段。
+
+
+隔离安装首次发现Web bundle的files清单漏列creative.patch.yml，导致源码测试通过而安装包拒绝加载。已补清单，并将单元测试扩展为检查每个bundle patch均列入发布文件；assemble另直接检查tar成员。初版隔离服务停止，生产未切换；必须从未导入的settings副本重建隔离home并重新安装最终制品，不能在损坏的首次导入结果上继续验收。
