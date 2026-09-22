@@ -6,13 +6,13 @@
 
 - [x] 阶段一：发布、生产与接口评估。
 - [x] 阶段二：迁移核心注入、V4历史、creative与unrestricted配置，完成单元/集成/类型检查。
-- [ ] 阶段三：本地构建制品；隔离home验证真实历史、模型、Team、设置、浏览器、Office及原生依赖。
-- [ ] 阶段四：备份、生产切换、鉴权与数据回读，提交推送dev。
+- [x] 阶段三：本地构建制品；隔离home验证真实历史、模型、Team、设置、浏览器、Office及原生依赖。
+- [x] 阶段四：备份、生产切换、鉴权与数据回读，提交推送dev。
 - [ ] 用户页面人工验收后归档。
 
 ## 固定版本
 
-目标 `dsh-v0.1.7-alpha.1` / `c36a83ff6bb95e3f82cf79f9be7c724270a8aa61`；本轮fetch后origin/master和upstream/master均为该提交。dev仍为eade9a055d，my43仍为20260918-alpha2。生产已安装Team的Host与Web profile，旧Context、Better Sidebar、scheduled-tasks未恢复。
+目标 `dsh-v0.1.7-alpha.1` / `c36a83ff6bb95e3f82cf79f9be7c724270a8aa61`；本轮fetch后origin/master和upstream/master均为该提交。评估起点为dev eade9a055d与my43 20260918-alpha2；切换结果见验收部分。生产已安装Team的Host与Web profile，旧Context、Better Sidebar、scheduled-tasks未恢复。
 
 ## 评估入口
 
@@ -53,7 +53,21 @@ unrestricted以线上0.3.0+my43.alpha2安装副本为基线，改用Config volat
 
 真实历史：从my43复制113个近期文件，复制前后哈希相等；zx-n、agent、apps各3条近期会话及原9条旧格式样本均通过读取、V4写入、追加、重开和模型历史/注入相等检查，原文件未改变。扫描仍拒绝原有5条不兼容旧日志，不删除字段或放宽规则。包括用户曾报告系统卡片问题的session-84e60464-d4c4-431d-8f67-9ff5b105fd11。
 
-本地完整组合已启动于随机loopback端口，独立home下的6个旧settings section已进入新profile。旧agent-presets.default必须先显式转换为agent-preset-registry.selectedDefault，新版内置导入不会替我们转换；其余原样导入。真实模型、Linux制品、浏览器、认证与生产切换仍在后续阶段。
+本地完整组合已启动于随机loopback端口，独立home下的6个旧settings section已进入新profile。旧agent-presets.default必须先显式转换为agent-preset-registry.selectedDefault，新版内置导入不会替我们转换；其余原样导入。本地真实模型和Team已完成；最终Linux制品与生产结果见下文。
 
 
 隔离安装首次发现Web bundle的files清单漏列creative.patch.yml，导致源码测试通过而安装包拒绝加载。已补清单，并将单元测试扩展为检查每个bundle patch均列入发布文件；assemble另直接检查tar成员。初版隔离服务停止，生产未切换；必须从未导入的settings副本重建隔离home并重新安装最终制品，不能在损坏的首次导入结果上继续验收。
+
+最终制品提交1ef7fba9656abbbdcdbe721349a181cd55d36811，320个tarball，Linux安装5047文件逐字节一致。包名相同且版本不变时，npm从已有node_modules生成lock会复用旧tarball integrity；只删package-lock不够。最终采用含构建提交号的tarball文件名，并移走旧node_modules和lock重建安装；二次完整性校验通过。远端只装依赖，不执行源码构建。
+
+Linux隔离home为/home/ubuntu/dsh-canary/20260922-017a1，随机loopback端口。settings六分组逐项比较通过；plugin热卸载/加载两轮后路由正确移除和恢复；浏览器真实切换注入开关并刷新后保持。连续六次真实读取使用原默认Flash/High，输出MY43_017A1_OK，只有initial请求头、1份注入、1张system卡片。18条历史在Linux重复通过；近期113源文件保持哈希一致，旧样本保留原代际。
+
+Team真实调用完成fresh成员创建、消息投递、共享任务pending→in_progress→completed；冷启动恢复2名inactive成员及completed任务。浏览器展示成员、模型和只读任务卡正常。Linux浏览器验证creative、原生PTY输入、刷新后同PID和环境变量保留；插件页面无脚本错误。首次SSH隧道浏览器load等待30秒超时，改用DOM就绪和120秒内容等待后通过，并非跳过页面验收。
+
+新版Remote以multipart附件传递原生字节，验收脚本按新协议解码；中文文本、1024字节精确读取及Office转换通过。Office输出15637字节，无缺失字体，PDF实际渲染可见中文；保留转换并发1。Linux flock/koffi/PTY/ripgrep通过，landlock仍报告partial，与既有原生环境边界一致。
+
+首次生产切换因校验早于异步设置导入而失败，自动恢复20260918-alpha2与一致旧home；备份和失败home完整保留于/home/ubuntu/dsh-backups/20260922-193654-pre-017a1。失败副本仅导入前两个section，unrestricted尚未处理，既无配置丢失也不是代码适配失败。新增有界设置就绪校验，在复制完整生产profile的新home复测：7次轮询、4751ms后6组值及运行时注入状态全部一致。最终切换先等此条件，再执行鉴权和文件哈希检查。
+
+最终生产切换完成：current=/home/ubuntu/dsh-releases/20260922-017a1；一致快照=/home/ubuntu/dsh-backups/20260922-205548-pre-017a1；上一release=20260918-alpha2。实际设置就绪耗时4157ms、6次检查；全部6组值、creative、合并Team bundle与注入版本2通过。113个原会话文件、两份凭据、旧scheduled存储及6项Caddy/systemd/bootstrap配置哈希未变。原cookie200、匿名401、token兑换303、可信Origin200、不可信Origin403；公网7入口继续302到Authelia，systemd active/running且NRestarts=0。
+
+生产浏览器已重新打开session-84e60464-d4c4-431d-8f67-9ff5b105fd11，114个历史节点正常呈现、creative名称正确；插件页面读回注入已启用，无脚本错误。自动浏览器通过SSH loopback验证，不等同于替用户完成Authelia密码/MFA登录；仍待用户日常页面人工验收，任务文档暂不归档。

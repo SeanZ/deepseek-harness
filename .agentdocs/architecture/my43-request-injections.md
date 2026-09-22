@@ -58,7 +58,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260918-alpha2`，核心为 patched `0.1.6-alpha.2`，制品提交 `56de5799d878a3f3317e2e335e2f05f02ed421be`。外部插件仅保留 `dsh-unrestricted@0.3.0+my43.alpha2`，web profile 的依赖与实际 node_modules 链接一起指向该 release；下次升级要同步更新 profile，不能只切 current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260922-017a1`，核心为 patched `0.1.7-alpha.1`，制品提交 `1ef7fba9656abbbdcdbe721349a181cd55d36811`。外部插件保留 `dsh-unrestricted@0.3.0+my43.017a1`，官方Agent Team使用合并后的agent-team-profile，profile清单中的自定义依赖和unrestricted安装链接指向该release，DSH内置包由当前安装的运行时解析表提供；下次升级要同步更新profile，不能只切current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -132,6 +132,12 @@ Linux Office WASM 小文档转换约5秒，转换后RSS约740MiB，进程峰值�
 
 V4的工具结果是独立tool角色，按消息层toolCallId匹配，不能再按旧内容块计数。request/injections仍为required声明快照，并加入V3相邻迁移白名单；声明载荷保持原plugin来源，物化时转为RequestInjectionMessage，属于RequestMessage而不属于持久Message。两种模型适配器均把它作为外部assistant历史，不能伪装成带重放状态的模型输出。
 
+creative的bundle patch必须同时列入package.json的files，发布验收直接检查tar成员；源码可加载不代表安装包完整。同版本重新打包时，tarball文件名加入构建提交号；移走旧node_modules与lock后生成新lock，安装后逐文件比对，避免npm沿用旧文件依赖integrity。
+
 creative由packages/bundle/web-app/presets/creative.patch.yml注册；每次升级对比standard的完整plugins配置，保持id不变。unrestricted升级补丁my43-unrestricted-017a1.patch以线上alpha2安装副本为基线，迁移为Config volatile字段与客户端configForms接口。部署前须完成插件适配，再允许旧settings.yaml自动导入；先将agent-presets.default转换为agent-preset-registry.selectedDefault，避免旧section无法匹配新entry。逐项比较导入值，保留原默认模型及凭据。旧agent-team-web-profile退出bundles，新的agent-team-profile同时提供Host与Web。
 
+settings首次导入在loader.await后异步进行，网页端口与bootstrap就绪不代表迁移完成；实机新副本曾在端口开放约4.8秒后才完成6个section。启动验收必须有界轮询settings/describe逐项比对原值，并验证unrestricted/status后才判定就绪；不能仅检查settings.yaml.imported存在，该文件在第一项写入前就已生成。默认日志级别下也没有完成info日志，不能靠等待该日志作为就绪条件。
+
 V4升级失败后须停服保全新home，再恢复一致的旧home/profile和旧release。不可只切current软链接而让alpha2读取V4或已迁移的profile；切换后的用户新增数据必须保留供人工决策。发布备份、制品标识及实际验收见当前任务文档。
+
+0.1.7的模块解析改为运行时拦截，不再以旧healProfilesModuleFallback复制链接作为就绪依据。生产共享profiles/node_modules保留490个旧release链接；新版对于解析表内包会覆盖这个物理层，内置包的profile链接也可能被移除。上游profile-resolution的两个“uses the installation DSH package ... while a stale shared link remains”测试验证Host与插件的CJS/ESM实际选择当前安装，专项重跑2项通过。不能仅见旧共享链接就判断正在混用旧代码，也不要无范围地清理历史共享目录；需核对当前runtime解析、自定义插件安装副本和实际组合行为。
