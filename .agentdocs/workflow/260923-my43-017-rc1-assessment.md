@@ -40,10 +40,11 @@ RC1插件加载前新增DSH peerDependencies兼容性检查。线上dsh-unrestri
 ## 升级实施阶段
 
 - [x] 合并RC1、生成文档冲突处理、聚焦测试和构建检查。
-- [ ] 本地制品及隔离实例验证，真实历史副本与creative注入回归。
-- [ ] 上传安装、Linux隔离Office/原生能力/Team/插件验证。
-- [ ] 确认生产无活动任务，备份切换、认证与会话读回。
-- [ ] 提交推送dev、更新运行约束与验收证据，等待用户人工验收。
+- [x] 本地制品及隔离实例验证，真实历史副本与creative注入回归。
+- [x] 上传安装、Linux隔离Office/原生能力/Team/插件验证。
+- [x] 确认生产无活动任务，备份切换、认证与会话读回。
+- [x] 提交推送dev、更新运行约束与验收证据。
+- [ ] 用户人工验收后归档任务。
 
 ## RC1实施中的验收发现
 
@@ -52,3 +53,21 @@ RC1插件加载前新增DSH peerDependencies兼容性检查。线上dsh-unrestri
 本地近期9条和原旧格式9条真实历史副本均通过，源文件分别128/73个保持原样；扫描仍拒绝此前已知的5条不兼容旧日志。creative真实连续6工具调用只记录1份注入、1份system message、initial请求头。Team真实创建成员、发送消息、建立并完成任务通过，共享projection与浏览器成员/任务面板正常，插件设置开关刷新后保持。
 
 生产未显式配置ui-chat.transcriptView；alpha.1默认compact，RC1默认standard，因此运行设置对比仅允许这一条已核实的默认值变化，其余17个namespace的既有值逐项比较。用户的显式模型配置以本轮生产快照为准，不套用旧文档中的Flash名称。Office和最终Linux制品验收仍待完成。
+
+本地Team进程重启后的共享projection恢复通过。正式制品来自ed8f9953187e5b50c27af818337df26214911caa，共309个DSH、9个vendor、2个既有插件/PTY包；unrestricted tarball逐文件与本轮从线上复制的实际安装目录一致。Office kit与WASM均固定0.1.0；服务器安装分package-lock-only、npm ci两步，禁用脚本并限制内存/CPU。
+
+远端首次安装因默认腾讯npm镜像尚无libreoffice-kit@0.1.0而ETARGET；官方registry只读查询确认可用。本次安装进程单独设npm_config_registry=https://registry.npmjs.org并使用prefer-online，未更改服务器全局npm配置，失败阶段没有切换生产。
+
+Linux最终制品18条历史回归通过（近期源128文件，旧源73文件），原生flock/koffi/PTY/ripgrep/landlock通过。Office独立转换和CLI均使用WASM成功、无缺字体，独立进程树峰值约1.5GiB。最初完整Web canary的MemoryHigh=1200M/MemoryMax=1600M低于转换峰值，出现预览超时与页面等待；未切生产。重建隔离unit为MemoryHigh=1800M/MemoryMax=2200M后串行验证Web Office、文本预览、二进制下载通过，unit峰值约1.65GiB，转换后回落约0.77GiB；生产unit原本无此限制，继续保留Office转换并发1，不改变生产服务限制。
+
+修正隔离限额后，插件浏览器开关/刷新持久化、两轮热卸载/加载、Linux真实Team成员/消息/完成任务及新面板通过；页面无未捕获错误。终端刷新后PID和环境变量保持。最后配置读回通过，canary无运行任务；生产preflight为86个会话且active为空，开始生产备份切换。
+
+## 生产切换结果
+
+2026-09-24 00:07切换成功：release为/home/ubuntu/dsh-releases/20260923-017rc1，构建提交ed8f9953187e5b50c27af818337df26214911caa，前一版本20260922-017a1。完整备份位于/home/ubuntu/dsh-backups/20260924-000753-pre-017rc1，包含一致home、服务配置和前后路径/文件哈希。当前配置17个namespace读回通过（只允许已核实的ui-chat默认变化），128个原会话文件、凭据和服务配置未改；全局CLI仍指向current。Caddy/Authelia配置无修改，本次bootstrap刷新成功；匿名DSH 401、token兑换303、旧cookie200、可信Origin200、不可信Origin403，公网7条路径匿名均302到Authelia。
+
+生产浏览器通过受控SSH隧道打开原keke会话session-84e60464-d4c4-431d-8f67-9ff5b105fd11，显示151个历史节点，creative与unrestricted开启状态正常，无pageerror。真实Authelia用户交互登录未重新操作；已验证公网匿名鉴权、Caddy bootstrap、可信Host/Origin、cookie复用及部署页面，不能把隧道页面读回称为完整公网用户登录。隔离服务和本次SSH隧道已停止，旧release与完整备份保留。待用户刷新页面人工验收后归档任务。
+
+生产页面检查后再次校验128个源会话文件、固定配置/凭据和服务配置均与切换前哈希相同，DSH running、NRestarts=0。仅手机调查文档及其原有索引条目保留为用户未提交改动；不纳入本轮提交。
+
+最终完整doc-sync 42项全部通过（完整Node/npm路径下重验），部署后的Office配置读回为maxConcurrentConversions:1。

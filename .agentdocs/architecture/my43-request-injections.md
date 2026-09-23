@@ -2,7 +2,7 @@
 
 ## 补丁边界
 
-当前维护目标为官方 `dsh-v0.1.7-alpha.1`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
+当前维护目标为官方 `dsh-v0.1.7-rc.1`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
 
 `request/injections` 是 required 持久事件，不属于聊天历史节点。发送前记录、按日志重建；重试重新读取声明，准备阶段取消不提交用户输入或注入。稳定注入保持同一请求序列；快照改变时开始新请求序列，让 alpha 的系统消息策略与可能发生位置变化的请求一致；因此不能承诺跨请求前缀缓存连续性。token-meter 将注入计入请求占用，单独保留历史节点计量；声明变化使旧 usage 锚点失效。
 
@@ -58,7 +58,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260922-017a1`，核心为 patched `0.1.7-alpha.1`，制品提交 `1ef7fba9656abbbdcdbe721349a181cd55d36811`。外部插件保留 `dsh-unrestricted@0.3.0+my43.017a1`，官方Agent Team使用合并后的agent-team-profile，profile清单中的自定义依赖和unrestricted安装链接指向该release，DSH内置包由当前安装的运行时解析表提供；下次升级要同步更新profile，不能只切current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260923-017rc1`，核心为 patched `0.1.7-rc.1`，制品提交 `ed8f9953187e5b50c27af818337df26214911caa`。外部插件保留 `dsh-unrestricted@0.3.0+my43.017a1`，官方Agent Team使用合并后的agent-team-profile，profile清单中的自定义依赖和unrestricted安装链接指向该release，DSH内置包由当前安装的运行时解析表提供；下次升级要同步更新profile，不能只切current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -141,3 +141,9 @@ settings首次导入在loader.await后异步进行，网页端口与bootstrap就
 V4升级失败后须停服保全新home，再恢复一致的旧home/profile和旧release。不可只切current软链接而让alpha2读取V4或已迁移的profile；切换后的用户新增数据必须保留供人工决策。发布备份、制品标识及实际验收见当前任务文档。
 
 0.1.7的模块解析改为运行时拦截，不再以旧healProfilesModuleFallback复制链接作为就绪依据。生产共享profiles/node_modules保留490个旧release链接；新版对于解析表内包会覆盖这个物理层，内置包的profile链接也可能被移除。上游profile-resolution的两个“uses the installation DSH package ... while a stale shared link remains”测试验证Host与插件的CJS/ESM实际选择当前安装，专项重跑2项通过。不能仅见旧共享链接就判断正在混用旧代码，也不要无范围地清理历史共享目录；需核对当前runtime解析、自定义插件安装副本和实际组合行为。
+
+## 017rc1部署约束
+
+LibreOffice kit与WASM均固定0.1.0，Linux仍使用WASM。发布产物要包含CLI及完整依赖闭包；普通Node启动时Office skill自动解析当前Node和CLI绝对路径。服务器的腾讯npm镜像可能滞后，发布安装按进程指定官方registry，不修改全局配置。Office继续并发1，完整Web转换实测unit峰值约1.65GiB；隔离测试MemoryHigh不能低于转换峰值，1.2GiB软限制会使预览超时，已验证1.8GiB软限制/2.2GiB硬限制组合可用。生产unit保持既有配置。
+
+Team状态改由session/projections的agentTeam字段及follow共享投影提供，旧agentTeams/view已删除，验收脚本必须跟随此接口。插件加载前检查显式DSH peerDependencies；当前unrestricted没有声明该范围，不需要豁免。工作详情未显式配置时默认从compact改为standard；必须区别默认变化与用户显式值丢失。
