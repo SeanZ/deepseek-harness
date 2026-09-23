@@ -47,7 +47,7 @@ RC1插件加载前新增DSH peerDependencies兼容性检查。线上dsh-unrestri
 
 ## RC1实施中的验收发现
 
-合并仅重生成event-producer-consumer文档，并同步中文表格与配对哈希。555项聚焦测试和外部插件13项通过；完整Node22构建、Host/Client类型检查、全库lint通过。文档检查41项通过，唯一失败是Node24工具路径缺少npm，已在完整构建后单独补跑doc-typecheck:contracts-ready并通过。SDK注入快照原先固定了旧bash超时文案、子智能体状态/tool参数及旧system/runtime-context来源和版本元数据，已审阅并刷新两份预期文件；没有改动注入文本或历史会话fixture。
+合并仅重生成event-producer-consumer文档，并同步中文表格与配对哈希。555项聚焦测试和外部插件13项通过；完整Node22构建、Host/Client类型检查、全库lint通过。文档检查41项通过，唯一失败是Node24工具路径缺少npm，已在完整构建后单独补跑doc-typecheck:contracts-ready并通过。SDK注入快照原先固定了旧bash超时文案、子智能体状态/tool参数及旧system/runtime-context来源和版本元数据，已审阅并刷新两份预期文件、生成规范化V4后继fixture，保留原V3 fixture；没有改动注入文本或真实历史会话。
 
 本地近期9条和原旧格式9条真实历史副本均通过，源文件分别128/73个保持原样；扫描仍拒绝此前已知的5条不兼容旧日志。creative真实连续6工具调用只记录1份注入、1份system message、initial请求头。Team真实创建成员、发送消息、建立并完成任务通过，共享projection与浏览器成员/任务面板正常，插件设置开关刷新后保持。
 
