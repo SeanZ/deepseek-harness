@@ -4,6 +4,8 @@
 
 ## 当前任务文档
 
+`workflow/260925-my43-017-rc2-upgrade.md` - 017rc2补丁迁移、构建验证与my43部署回退入口。
+
 `workflow/260923-my43-017-rc1-assessment.md` - 017rc1合并、插件/Office兼容、制品部署与验收；后续升级前读取。
 
 `workflow/260922-my43-017-alpha1-assessment.md` - 0.1.7-alpha.1的V4、设置与预设迁移阻断项及生产升级验收要求；下一次升级前读取。
@@ -28,4 +30,4 @@
 
 `dev` 是自用补丁与 my43 制品的长期维护分支，推送到 `SeanZ/deepseek-harness` 的同名分支；原 `feature/my43-alpha-request-injections` 保留为本次迁移的阶段性记录。`dev` 同时保存核心请求注入改动与外部插件兼容补丁，插件补丁入口见架构文档。
 
-本地 `upstream` 指向官方仓库 `https://github.com/deepseek-ai/deepseek-harness.git`。当前基线为官方 `dsh-v0.1.7-rc.1` / `46a7f68b09`（升级固定按标签，不默认合并 master 可能包含的额外提交）。后续跟进时先 fetch 并明确选定上游 tag 或提交，再合并到 dev，保留已推送的补丁历史；不直接用上游覆盖 dev。冲突解决后按变更范围运行核心、插件、历史迁移与构建检查，制品部署另做隔离验收和备份。分支同步本身不代表自动升级生产服务。
+本地 `upstream` 指向官方仓库 `https://github.com/deepseek-ai/deepseek-harness.git`。当前基线为官方 `dsh-v0.1.7-rc.2` / `477b4f4205`（升级固定按标签，不默认合并 master 可能包含的额外提交）。后续跟进时先 fetch 并明确选定上游 tag 或提交，再合并到 dev，保留已推送的补丁历史；不直接用上游覆盖 dev。冲突解决后按变更范围运行核心、插件、历史迁移与构建检查，制品部署另做隔离验收和备份。分支同步本身不代表自动升级生产服务。

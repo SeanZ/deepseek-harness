@@ -38,6 +38,37 @@ async function turn(ctx: Context, agent: Agent, text: string) {
 }
 
 describe('持久请求注入', () => {
+  it.each([undefined, 'in-history'] as const)('动态工具更新保留注入锚点和工具历史（路由=%s）', async (toolUpdate) => {
+    const adapter = new MockAdapter([textResponse('初始'), textResponse('新增'), textResponse('移除')])
+    if (toolUpdate !== undefined) adapter.toolUpdate = toolUpdate
+    adapter.systemPromptUpdate = 'in-history'
+    const ctx = await mount(adapter)
+    ctx.on('agent/request-injections', async (_payload, next) => [...await next(), contribution()])
+    const agent = await ctx.agentLoop.create(SessionId(`injected-tools-${toolUpdate ?? 'fallback'}`), { provider: 'mock', model: 'mock' })
+    await turn(ctx, agent, '开始')
+    const remove = ctx.tools.register(defineContentToolFixture({
+      name: 'extra', description: '临时工具', parameters: {},
+      async execute() { return [{ type: 'text', text: '完成' }] },
+    }))
+    await turn(ctx, agent, '增加工具后继续')
+    remove()
+    await turn(ctx, agent, '移除工具后继续')
+    expect(adapter.requests).toHaveLength(3)
+    const events = agent.session.snapshotEvents()
+    expect(events.filter(event => event.type === 'request/injections')).toHaveLength(1)
+    expect(events.filter(event => event.type === 'system/message')).toHaveLength(1)
+    expect(events.filter(event => event.type === 'developer/message')).toHaveLength(2)
+    for (const request of adapter.requests) {
+      const injection = request.messages.findIndex(message => message.id === 'request-injection:guidance')
+      expect(injection).toBe(request.messages.findLastIndex(message => message.role === 'user' && message.source?.kind === 'user') - 1)
+      expect(request.messages.filter(message => message.role === 'system')).toHaveLength(1)
+    }
+    const last = adapter.requests.at(-1)!
+    expect(last.toolHistory).toEqual(agent.session.toolHistory())
+    expect(last.messages.filter(message => message.role === 'developer')).toHaveLength(toolUpdate === 'in-history' ? 2 : 0)
+    expect(last.tools?.some(tool => tool.name === 'extra') ?? false).toBe(toolUpdate === 'in-history')
+  })
+
   it('切换模型并连续五次调用工具时保持最新用户前锚点，逐次从日志重建', async () => {
     const first = new MockAdapter([textResponse('第一次回答')])
     const second = new MockAdapter([

@@ -1,6 +1,28 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-15-my43-request-injections.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-09-15-my43-request-injections.md
-2026-09-15-my43-request-injections.md: 9c92324b87499e72123ea6dc2bab24fb29b30d64
-2026-09-15-my43-request-injections.zh.md: d1d925f3f41be95ac9cbf3bf53f3960e3da77bf0
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-09-15-my43-request-injections:
+  en: 5caa8a7829ccbe91
+  zh: 5c3f63735a10cc82
+/2026-09-15-my43-request-injections/summary:
+  en: aa8e41549dd91ee1
+  zh: 37ae9acdbbad8d4e
+/2026-09-15-my43-request-injections/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-09-15-my43-request-injections/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-09-15-my43-request-injections/compatibility:
+  en: 9dd88d1dbaed716d
+  zh: 4cad3311bd326826
+/2026-09-15-my43-request-injections/verification:
+  en: d2d1fc47e0e3cd9d
+  zh: 375e22da2ef1b3e1
+/2026-09-15-my43-request-injections/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269
