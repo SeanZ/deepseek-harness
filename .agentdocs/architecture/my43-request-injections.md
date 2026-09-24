@@ -147,3 +147,9 @@ V4升级失败后须停服保全新home，再恢复一致的旧home/profile和�
 LibreOffice kit与WASM均固定0.1.0，Linux仍使用WASM。发布产物要包含CLI及完整依赖闭包；普通Node启动时Office skill自动解析当前Node和CLI绝对路径。服务器的腾讯npm镜像可能滞后，发布安装按进程指定官方registry，不修改全局配置。Office继续并发1，完整Web转换实测unit峰值约1.65GiB；隔离测试MemoryHigh不能低于转换峰值，1.2GiB软限制会使预览超时，已验证1.8GiB软限制/2.2GiB硬限制组合可用。生产unit保持既有配置。
 
 Team状态改由session/projections的agentTeam字段及follow共享投影提供，旧agentTeams/view已删除，验收脚本必须跟随此接口。插件加载前检查显式DSH peerDependencies；当前unrestricted没有声明该范围，不需要豁免。工作详情未显式配置时默认从compact改为standard；必须区别默认变化与用户显式值丢失。
+
+## 017rc2 配置与请求更新
+
+DeepSeek API key运行插件从`@deepseek-ai/dsh-llm-deepseek`拆分为`@deepseek-ai/dsh-llm-deepseek-api-key`，profile补丁若同时指定id和旧name会导致模型配置覆盖失配。迁移时只替换name，保留`llm-deepseek`的id和完整models列表，逐项比较settings/describe。原modeSelectionEnabled删除，由ui-settings代码工作工具开关控制；该字段可以从比较基线移除，其余设置不放宽。
+
+新动态工具更新必须和请求注入同时验证：工具增加/移除时，原生toolUpdate与降级重建请求都要保留单一system、plugin assistant注入位置、toolHistory与请求系列边界。以动态工具三轮请求回归及真实六步调用验证，不以无冲突合并作为兼容证据。Linux Office kit/WASM均更新到0.1.1，仍需独立验收CLI与Web预览，不能复用rc1转换结果。
