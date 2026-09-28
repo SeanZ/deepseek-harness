@@ -2,7 +2,7 @@
 
 ## 补丁边界
 
-当前维护目标为官方 `dsh-v0.1.7-rc.1`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
+当前维护目标为官方 `dsh-v0.2.0-rc.1`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。
 
 `request/injections` 是 required 持久事件，不属于聊天历史节点。发送前记录、按日志重建；重试重新读取声明，准备阶段取消不提交用户输入或注入。稳定注入保持同一请求序列；快照改变时开始新请求序列，让 alpha 的系统消息策略与可能发生位置变化的请求一致；因此不能承诺跨请求前缀缓存连续性。token-meter 将注入计入请求占用，单独保留历史节点计量；声明变化使旧 usage 锚点失效。
 
@@ -58,7 +58,7 @@ DSH_HOME="$PWD/.artifacts/my43-canary" DSH_AGENTS_HOME="$PWD/.artifacts/my43-can
 
 ## 已部署入口与更新方式
 
-生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260923-017rc1`，核心为 patched `0.1.7-rc.1`，制品提交 `ed8f9953187e5b50c27af818337df26214911caa`。外部插件保留 `dsh-unrestricted@0.3.0+my43.017a1`，官方Agent Team使用合并后的agent-team-profile，profile清单中的自定义依赖和unrestricted安装链接指向该release，DSH内置包由当前安装的运行时解析表提供；下次升级要同步更新profile，不能只切current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
+生产通过 `/etc/systemd/system/dsh.service.d/40-local-release.conf` 覆盖 ExecStart，Node 直接启动 `/home/ubuntu/dsh-releases/current/node_modules/@deepseek-ai/dsh/lib/bin.js`，其余 unit 与原有两个 drop-in 保留。current 指向 `20260928-020rc1`，核心为 patched `0.2.0-rc.1`，制品提交 `402ef79bdd45ffd6f5af61393449edec9de5d34c`。外部插件保留 `dsh-unrestricted@0.3.0+my43.017a1`，官方Agent Team使用合并后的agent-team-profile，profile清单中的自定义依赖和unrestricted安装链接指向该release，DSH内置包由当前安装的运行时解析表提供；下次升级要同步更新profile，不能只切current。生产 home、凭据、工作目录与端口不变，Caddy 配置未修改。
 
 普通 registry 依赖由 release 内 package-lock.json 记录，本地内部包则由根 manifest overrides 固定到 tarball。再次安装保持 --ignore-scripts 与 --legacy-peer-deps，并运行原生能力、制品一致性、历史迁移、真实请求和认证检查；不要在 profile 内另装旧 @deepseek-ai 包覆盖运行时模块。
 
@@ -159,3 +159,5 @@ DeepSeek API key运行插件从`@deepseek-ai/dsh-llm-deepseek`拆分为`@deepsee
 ToolCallRecovery与请求注入同时保留：步骤异常时先补记缺失工具结果，再关闭步骤；已关闭历史不被自动修复。DeepSeek空text跨模型问题不在此修复范围。会话仍为V4，生成schema改为精简表示，必须重新生成而非保留旧结构的自动合并片段。
 
 Web工作过程默认改为detailed；settings读回的旧standard可能只是旧默认值，不代表用户已保存。升级需比较真实有效配置，并显式保留原显示选项。Session Log enabled改为volatile并新增通用设置入口，原关闭值应保留；web不应启用desktop产品统计。可选schedule bundle不自动加入。
+
+新版首次打开会显示预览版说明，点击继续会持久化ui-settings-general.welcomeNoticeVersion。浏览器验收应处理该说明，并只允许这个已知已读状态变化；不能因此放宽其它设置比较。隔离测试后、正式停服前重新比对生产配置；本次期间默认模型被用户改为DeepSeek V4 Pro/max，经逐项确认只有该配置变化后更新验收快照，保留最新值。禁止将隔离实例的旧默认模型写回生产。
