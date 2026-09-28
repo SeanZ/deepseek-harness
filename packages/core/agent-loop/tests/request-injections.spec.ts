@@ -7,7 +7,7 @@ import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-test
 import { createUserMessage, LlmError } from '@deepseek-ai/dsh-llm'
 import { Session, SessionId, foldRequestMessageInjections, materializeRequestMessages } from '@deepseek-ai/dsh-session'
 import type { RequestMessageInjection } from '@deepseek-ai/dsh-session'
-import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
+import { defineContentToolFixture, TOOL_RUNTIME_SCHEDULER } from '@deepseek-ai/dsh-tools'
 import { MockAdapter, textResponse, toolCallResponse } from './mock-adapter.ts'
 
 const contexts: Context[] = []
@@ -38,6 +38,44 @@ async function turn(ctx: Context, agent: Agent, text: string) {
 }
 
 describe('持久请求注入', () => {
+  it('工具调度失败后补记结果，继续对话仍保持注入与日志重建一致', async () => {
+    const adapter = new MockAdapter([toolCallResponse('failed-call', 'echo', {}), textResponse('恢复完成')])
+    const ctx = await mount(adapter)
+    ctx.on('agent/request-injections', async (_payload, next) => [...await next(), contribution()])
+    let executions = 0
+    ctx.tools.register(defineContentToolFixture({
+      name: 'echo', description: '测试恢复', parameters: {},
+      async execute() { executions++; return [{ type: 'text', text: '完成' }] },
+    }))
+    const scheduler = ctx.tools[TOOL_RUNTIME_SCHEDULER]
+    const prepare = scheduler.prepare.bind(scheduler)
+    scheduler.prepare = () => { throw new Error('测试调度失败') }
+    const agent = await ctx.agentLoop.create(SessionId('injected-tool-recovery'), { provider: 'mock', model: 'mock' })
+    try { await turn(ctx, agent, '调用工具') } finally { scheduler.prepare = prepare }
+    const failed = agent.session.snapshotEvents()
+    expect(executions).toBe(0)
+    expect(failed.findLast(event => event.type === 'turn/end')?.data.reason.kind).toBe('error')
+    expect(failed.filter(event => event.type === 'tool/result')).toHaveLength(1)
+    expect(failed.find(event => event.type === 'tool/result')?.data.message).toMatchObject({
+      toolCallId: 'failed-call', isError: true,
+    })
+    await turn(ctx, agent, '继续')
+    const events = agent.session.snapshotEvents()
+    expect(events.slice(0, failed.length)).toEqual(failed)
+    expect(events.filter(event => event.type === 'request/injections')).toHaveLength(1)
+    expect(events.filter(event => event.type === 'system/message')).toHaveLength(1)
+    expect(events.findLast(event => event.type === 'turn/end')?.data.reason.kind).toBe('completed')
+    expect(adapter.requests).toHaveLength(2)
+    const request = adapter.requests[1]!
+    expect(request.messages.filter(message => message.id === 'request-injection:guidance')).toHaveLength(1)
+    expect(request.messages.findIndex(message => message.id === 'request-injection:guidance'))
+      .toBe(request.messages.findLastIndex(message => message.role === 'user') - 1)
+    const restored = Session.create(SessionId('injected-tool-recovery-restored'), structuredClone(events))
+    // 最后一次模型输出尚不属于该请求；回读时保留此前模型实际收到的完整前缀。
+    expect(materializeRequestMessages(restored.deriveMessages().slice(0, -1), foldRequestMessageInjections(events)))
+      .toEqual(request.messages)
+  })
+
   it.each([undefined, 'in-history'] as const)('动态工具更新保留注入锚点和工具历史（路由=%s）', async (toolUpdate) => {
     const adapter = new MockAdapter([textResponse('初始'), textResponse('新增'), textResponse('移除')])
     if (toolUpdate !== undefined) adapter.toolUpdate = toolUpdate

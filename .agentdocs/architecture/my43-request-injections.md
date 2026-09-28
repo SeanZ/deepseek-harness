@@ -153,3 +153,9 @@ Team状态改由session/projections的agentTeam字段及follow共享投影提供
 DeepSeek API key运行插件从`@deepseek-ai/dsh-llm-deepseek`拆分为`@deepseek-ai/dsh-llm-deepseek-api-key`，profile补丁若同时指定id和旧name会导致模型配置覆盖失配。迁移时只替换name，保留`llm-deepseek`的id和完整models列表，逐项比较settings/describe。原modeSelectionEnabled删除，由ui-settings代码工作工具开关控制；该字段可以从比较基线移除，其余设置不放宽。
 
 新动态工具更新必须和请求注入同时验证：工具增加/移除时，原生toolUpdate与降级重建请求都要保留单一system、plugin assistant注入位置、toolHistory与请求系列边界。以动态工具三轮请求回归及真实六步调用验证，不以无冲突合并作为兼容证据。Linux Office kit/WASM均更新到0.1.1，仍需独立验收CLI与Web预览，不能复用rc1转换结果。
+
+## 020rc1 迁移契约
+
+ToolCallRecovery与请求注入同时保留：步骤异常时先补记缺失工具结果，再关闭步骤；已关闭历史不被自动修复。DeepSeek空text跨模型问题不在此修复范围。会话仍为V4，生成schema改为精简表示，必须重新生成而非保留旧结构的自动合并片段。
+
+Web工作过程默认改为detailed；settings读回的旧standard可能只是旧默认值，不代表用户已保存。升级需比较真实有效配置，并显式保留原显示选项。Session Log enabled改为volatile并新增通用设置入口，原关闭值应保留；web不应启用desktop产品统计。可选schedule bundle不自动加入。
