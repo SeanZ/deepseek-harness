@@ -4,6 +4,8 @@
 
 ## 当前任务文档
 
+`workflow/260929-my43-020-rc2-upgrade.md` - 020rc2的pi-ai适配、持久事件、Linux制品和生产部署验证。
+
 `workflow/260928-my43-020-rc1-assessment.md` - 020rc1评估、补丁适配、测试及my43部署回退。
 
 `workflow/260925-my43-017-rc2-upgrade.md` - 017rc2补丁迁移、构建验证与my43部署回退入口。
