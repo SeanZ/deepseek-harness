@@ -8,6 +8,8 @@
 
 `creative` 使用当前 standard 的完整组合，独立标识用于外部插件选择，不自行提供注入文本。两者解析后相等由测试锁定。alpha 不提供 preset 继承，因此维护 standard 时需同步 creative。`dsh-unrestricted` 0.3.0 的主机逻辑和六次真实工具调用已验证。其旧独立 RPC 状态入口在 alpha 返回 HTTP 405；[兼容补丁](../../scripts/patches/my43-unrestricted-alpha.patch) 将主机和客户端状态读取迁到共享 `/api/unrestricted/status`，浏览器显示已开启且无操作错误，插件测试验证状态随设置变化。它不修改注入文本。首次核心隔离验证未包含旧 `dsh-context`、sidebar 与 scheduled-tasks；后续完整插件验收与当前安装状态见下文。旧 context 已按授权移除。
 
+021alpha1起standard包含time-context、tool-schedule，并在spawn/fork中禁止四个schedule工具；creative须完整同步这些plugins配置。官方Schedule与已停用的第三方scheduled-tasks是独立存储和组件，不能因升级自动恢复旧插件任务。
+
 ## 配套插件兼容补丁
 
 补丁对象为 my43 的 `dsh-unrestricted` 0.3.0 源码目录，包含 node 入口、客户端 controller 源码、重新构建的 client bundle/sourcemap 和状态测试。未来部署时先保留插件原目录副本，在新插件副本内执行 `git apply --unidiff-zero --check <本仓库绝对路径>/scripts/patches/my43-unrestricted-alpha.patch`，成功后再 `git apply --unidiff-zero <同一补丁路径>`；回退使用 `git apply --unidiff-zero --reverse`。只有校验成功才应用；其他版本不可盲套。已在本地原版副本上验证正向应用，修改后验证反向检查，并通过原有插件测试与新增状态测试。
@@ -29,6 +31,8 @@ my43 日志只复制到忽略目录后离线审计：73 个会话中 68 个通�
 Authelia 放行不等同于取得 DSH cookie。根入口的 DSH 401 跳转到 `/_dsh/bootstrap`，该路径同样受 Authelia 保护。systemd `ExecStartPost` 运行 `/usr/local/libexec/dsh-caddy-bootstrap $MAINPID $INVOCATION_ID`：按本次 invocation 和进程查找启动令牌，原子写入 `/run/dsh-browser-bootstrap/index.html`，权限 root:caddy 0640，页面跳转到 HTTPS 的令牌兑换地址。Caddy 对 bootstrap 与根响应禁止缓存；不要恢复把 bootstrap 静态页直接绑定 `/` 的旧方案。
 
 alpha 的 loopback 启动 URL 格式兼容现有脚本，本地真实 CLI 测试证明 cookie 可跨进程重启复用。未来打包运行时必须确认 systemd MAINPID 对应实际输出启动 URL 的 Node 进程；保留同一 credentials 的 browser-session 记录和原 ExecStartPost。初次迁移审计阶段只读检查了远端 Caddy validate 与服务状态；后续生产切换另外验证本次启动引导、cookie 和公网认证边界，不将匿名跳转检查称为真实用户完整登录验收。
+
+021alpha1新增publicUrl只改变对外宣告，不改变监听或鉴权。my43的bootstrap helper严格提取http://127.0.0.1地址；保持该字段未设置。将来启用HTTPS publicUrl时必须同步适配helper并验收令牌兑换、cookie和Authelia链路。
 
 ## 后续构建与部署边界
 

@@ -10,9 +10,9 @@
 - [x] 给出升级建议和后续验收范围；等待用户决定是否实施。
 
 - [x] 解决合并冲突、同步creative并完成本地检查。
-- [ ] 制品打包、本地与Linux独立home/端口验收。
-- [ ] 一致备份、生产切换及配置/历史/鉴权读回。
-- [ ] commit/push dev，同步本地，停止测试进程。
+- [x] 制品打包、本地与Linux独立home/端口验收。
+- [x] 一致备份、生产切换及配置/历史/鉴权读回。
+- [x] commit/push dev，同步本地，停止测试进程。
 - [ ] 用户人工验收后归档。
 
 ## 固定基线
@@ -45,4 +45,12 @@ creative必须同步standard新增的time-context、tool-schedule及spawn/fork�
 
 隔离本地真实GLM5.3和当前DeepSeek Flash各完成6次顺序工具调用，均仅1个initial header、1次system与1次request/injections；pi-ai 298个流片段和最终参数精确校验通过。插件两轮卸载重载和浏览器开关持久化通过，页面无JS错误。
 
-制品与Linux业务验证尚未完成，生产仍020rc2。iPhone真机问题没有明确修复证据，不宣称已解决；人工验收前不归档。
+制品源码提交ebd8664bce已推送dev，提交后官方构建并打包321个DSH、9个vendor、3个外部补丁包。my43安装后333包6961文件逐字节一致，PTY与旧制品一致。Linux真实DS/GLM六步、pi-ai流式参数、9条近期与9条旧格式会话、文件预览/二进制读取、Office服务与CLI/Remote、插件生命周期及浏览器开关、PTY刷新后同PID与环境保持均通过。Team真实成员/共享任务完成；重启后API恢复与浏览器任务面板通过，设置和11模型目录保持一致；测试浏览器点击继续后，ui-settings-general.welcomeNoticeVersion由2026-08-13.1更新为2026-09-28.1，此项有意的已读状态变化单独记录，生产基线仍保留原值。系统原生flock/koffi/ripgrep/PTY通过，Landlock仍partial。生产已切换20261003-021alpha1，CLI0.2.1-alpha.1，PID1667721，NRestarts=0，仅监听127.0.0.1:3080。隔离3082和本地43845已停，43846/43847测试转发已关闭。iPhone真机问题没有明确修复证据，不宣称已解决；人工验收前不归档。
+
+## 生产读回与回退入口
+
+2026-10-03 20:48切换前确认95会话无运行项，一致备份为/home/ubuntu/dsh-backups/20261003-204820-pre-021alpha1，包含home、agents、服务配置与原始哈希；上一release为/home/ubuntu/dsh-releases/20260929-020rc2，保留未清理。当前release源码提交ebd8664bce6bb186140bea2b443ff140a45d6be9，安装6961文件逐字节校验通过。线上配置、凭据和147个历史文件在切换与浏览器验收后均保持原样。
+
+匿名直连401，bootstrap303，旧cookie200，可信Origin200，不可信Origin403；公网根、bootstrap、RPC与文件入口7项均302进入Authelia。Caddy、systemd与bootstrap helper哈希不变。生产浏览器打开原k125会话，151历史节点可见，原DeepSeek-V4-Pro会话模型、creative与unrestricted启用状态正确，连接恢复稳定且pageerror为空。全局默认模型仍为deepseek-v4.1-flash-expires-on-0910/high，全部11模型可解析。
+
+异常回退仍须先停服保全新home，再恢复上述一致home/profile与旧current，不能仅改软链接降级。最终证据在release的021-deployment-state.json、021-post-browser-integrity.json、production-runtime-after-browser.json及本地忽略目录.artifacts/021-alpha1。用户尚需手机与本人正常使用验收，任务文档保留在当前任务索引，确认后再归档。
