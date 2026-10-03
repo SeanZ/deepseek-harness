@@ -29,11 +29,14 @@ def main() -> None:
             self.send_header('Content-Type', 'text/event-stream')
             self.end_headers()
             for chunk in [
-                {'choices': [{'delta': {'role': 'assistant', 'content': 'PYTHON_INJECTION_OK'}}]},
-                {'choices': [{'delta': {}, 'finish_reason': 'stop'}], 'usage': {'prompt_tokens': 5, 'completion_tokens': 2}},
+                {'type': 'message_start', 'message': {'id': 'msg_injection', 'model': 'deepseek-v4-flash', 'usage': {'input_tokens': 5, 'output_tokens': 0}}},
+                {'type': 'content_block_start', 'index': 0, 'content_block': {'type': 'text', 'text': ''}},
+                {'type': 'content_block_delta', 'index': 0, 'delta': {'type': 'text_delta', 'text': 'PYTHON_INJECTION_OK'}},
+                {'type': 'content_block_stop', 'index': 0},
+                {'type': 'message_delta', 'delta': {'stop_reason': 'end_turn'}, 'usage': {'output_tokens': 2}},
+                {'type': 'message_stop'},
             ]:
                 self.wfile.write(('data: ' + json.dumps(chunk) + '\n\n').encode())
-            self.wfile.write(b'data: [DONE]\n\n')
 
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     worker = threading.Thread(target=server.serve_forever)
@@ -47,7 +50,6 @@ def main() -> None:
                 {'id': 'session-persistence-jsonl', 'config': {'root': str(root / 'sessions'), 'compression': 'none'}},
                 {'id': 'session-telemetry-otel', 'disabled': True},
                 {'id': 'session-log-deepseek', 'config': {'enabled': False}},
-                {'id': 'llm-deepseek', 'config': {'protocol': 'chat-completions'}},
                 {'insert': [{'id': 'test-injections', 'name': str(repo / 'snapshots/sdk/request-injections/injection-producer.mjs')}]},
             ]))
             env = {
@@ -65,18 +67,21 @@ def main() -> None:
                     'finalResponse': result.final_response,
                     'finishReason': result.finish_reason,
                     'modelRoles': [[m['role'] for m in request['messages']] for request in requests],
+                    'modelSystemPresent': [bool(request.get('system')) for request in requests],
                     'injectionEvents': [e['data'] for e in result.events if e['type'] == 'request/injections'],
                     'assistantOutputs': [e['data']['message']['content'] for e in result.events if e['type'] == 'assistant/message'],
                 }
                 continuations = [harness.run('继续回复验证标记。', session_id=result.session_id) for _ in range(2)]
-                assert all(run.final_response == 'PYTHON_INJECTION_OK' for run in continuations)
+                for run in continuations:
+                    assert run.finish_reason == 'completed', run.finish_reason
+                    assert run.final_response == 'PYTHON_INJECTION_OK', run.final_response
                 projection['requestHeaders'] = [
                     [e['data']['reason'] for e in run.events if e['type'] == 'request/header']
                     for run in [result, *continuations]
                 ]
                 assert len(requests) == 3
-            logs = list((root / 'sessions').rglob('session.v3.jsonl'))
-            assert len(logs) == 1, '缺少持久 V3 会话'
+            logs = list((root / 'sessions').rglob('session.v4.jsonl'))
+            assert len(logs) == 1, '缺少持久 V4 会话'
             rows = [json.loads(line) for line in logs[0].read_text().splitlines()]
             persisted = [e['data'] for e in rows if e['type'] == 'request/injections']
             assert persisted == projection['injectionEvents'] and len(persisted) == 1

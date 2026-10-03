@@ -3,11 +3,12 @@
   "finishReason": "completed",
   "modelRoles": [
     [
-      "system",
       "assistant",
-      "user",
       "user"
     ]
+  ],
+  "modelSystemPresent": [
+    true
   ],
   "injectionEvents": [
     {
@@ -27,7 +28,6 @@
       ]
     }
   ],
-  "requestHeaders": [["initial"], [], []],
   "assistantOutputs": [
     [
       {
@@ -35,5 +35,12 @@
         "text": "PYTHON_INJECTION_OK"
       }
     ]
+  ],
+  "requestHeaders": [
+    [
+      "initial"
+    ],
+    [],
+    []
   ]
 }
