@@ -174,7 +174,7 @@ function piContext(systemPrompt: string | undefined, options: GenerateOptions, m
 }
 
 function appendAssistant(
-  message: Extract<RequestMessage, { role: 'assistant' }>,
+  message: Extract<Message, { role: 'assistant' }>,
   messages: PiMessage[],
   toolNames: Map<ToolCallId, string>,
   onReplayDegrade?: (reason: string) => void,

@@ -44,6 +44,17 @@ function repository(test: TestContext) {
 }
 
 describe('maintained repository reference policy', () => {
+  it('仅允许集成锁文件固定提交，其他脚本仍禁止提交引用', () => {
+    const commit = 'a'.repeat(40)
+    expect(findRepositoryReferences('scripts/purge/lock.json', commit, new Set([commit]))).toEqual([])
+    expect(findRepositoryReferences('scripts/purge/build.mjs', commit, new Set([commit]))).toEqual([
+      { file: 'scripts/purge/build.mjs', line: 1, kind: 'commit-hash' },
+    ])
+    expect(findRepositoryReferences('scripts/purge/lock.json', organizationUrl, new Set())).toEqual([
+      { file: 'scripts/purge/lock.json', line: 1, kind: 'organization-url' },
+    ])
+  })
+
   it('允许代理运行手册记录制品提交，但仍校验组织链接和普通文档', (test) => {
     const fixture = repository(test)
     fixture.write('.agentdocs/architecture/deployment.md', fixture.commit)

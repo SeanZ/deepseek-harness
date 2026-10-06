@@ -1,7 +1,7 @@
 /** Map system snapshots, tool changes, and conversation turns to Messages using the configured route capability. */
 
 import { LlmError, requestImageHandleText } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, GenerateOptions, ImageAttachmentAccessResolver, RequestMessage } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, GenerateOptions, ImageAttachmentAccessResolver, Message, RequestMessage } from '@deepseek-ai/dsh-llm'
 import type { ImageAttachmentRef, RequestImageAttachment } from '@deepseek-ai/dsh-attachment'
 import type { DeepSeekConnectionOptions as Connection } from './types.ts'
 import type { DeepSeekFileId } from './file-id.ts'
@@ -23,7 +23,7 @@ function toolInput(raw: string): Record<string, unknown> {
     : {}
 }
 
-function assistant(message: Extract<RequestMessage, { role: 'assistant' }>, model: string, onReplayDegrade?: (reason: string) => void): WireBlock[] {
+function assistant(message: Message, model: string, onReplayDegrade?: (reason: string) => void): WireBlock[] {
   const replay = readReplay(message, model, onReplayDegrade)
   return message.content.map((block, index): WireBlock => {
     switch (block.type) {

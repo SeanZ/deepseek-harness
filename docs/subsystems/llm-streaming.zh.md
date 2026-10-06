@@ -597,7 +597,7 @@ interface RequestUserInput {
 
 ```ts type-equiv
 /** A durable conversation message or a user input used only for one request. */
-type RequestMessage = Message | RequestUserInput | RequestInjectionMessage
+type RequestMessage = Message | RequestUserInput
 ```
 
 ```ts type-equiv

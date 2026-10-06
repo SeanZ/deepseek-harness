@@ -1,7 +1,7 @@
 /** Minimal native thinking metadata; durable Harness blocks own all response text. */
 
 import { LlmError } from '@deepseek-ai/dsh-llm'
-import type { Message, RequestMessage, ReplayEnvelope } from '@deepseek-ai/dsh-llm'
+import type { Message, ReplayEnvelope } from '@deepseek-ai/dsh-llm'
 
 /** Index-aligned metadata retained alongside each emitted Harness block. */
 export interface ReplayBlock {
@@ -36,7 +36,7 @@ export function replayState(model: string, blocks: ReplayBlock[]): ReplayEnvelop
  * @param onDegrade - diagnostic for unusable metadata; receives no message content or signatures.
  * @returns index-aligned metadata, absent for foreign, cross-model or degraded history.
  */
-export function readReplay(message: Message | Extract<RequestMessage, { role: 'assistant' }>, model: string, onDegrade?: (reason: string) => void): ReplayBlock[] | undefined {
+export function readReplay(message: Message, model: string, onDegrade?: (reason: string) => void): ReplayBlock[] | undefined {
   try { return validateReplay(message, model) } catch (error) {
     /* v8 ignore next -- the validator only throws INVALID_REPLAY_STATE; preserve future non-replay failures. */
     if (!(error instanceof LlmError) || error.code !== 'INVALID_REPLAY_STATE') throw error
@@ -45,7 +45,7 @@ export function readReplay(message: Message | Extract<RequestMessage, { role: 'a
   }
 }
 
-function validateReplay(message: Message | Extract<RequestMessage, { role: 'assistant' }>, model: string): ReplayBlock[] | undefined {
+function validateReplay(message: Message, model: string): ReplayBlock[] | undefined {
   if (message.source.kind !== 'model' || message.source.replayState === undefined) return undefined
   const fail = (detail: string): never => { throw new LlmError(`DeepSeek Messages replay: ${detail}`, 'INVALID_REPLAY_STATE') }
   const envelope = object(message.source.replayState, 'INVALID_REPLAY_STATE')

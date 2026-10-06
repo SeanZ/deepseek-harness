@@ -16,7 +16,7 @@ import type {
   RequestErrorAction,
 } from '@deepseek-ai/dsh-agent'
 import { agentEvents, assembleContextFor } from '@deepseek-ai/dsh-agent'
-import type { GenerateOptions, LlmCallConfig, RequestMessage, PreparedLlmCall } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@deepseek-ai/dsh-llm'
 import {
   LlmError,
   createAssistantMessage,
@@ -27,8 +27,8 @@ import {
 import { assertNever, deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import { createScope } from '@deepseek-ai/dsh-scope'
-import type { EpochHeader, RequestContext, RequestMessageInjection, Session, SessionId, SessionSeq, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
-import { canonicalHeader, canonicalRequestMessageInjections, foldRequestMessageInjections, headerEquals, materializeRequestMessages, requestMessageInjectionsEqual, ToolCallRecovery } from '@deepseek-ai/dsh-session'
+import type { EpochHeader, RequestContext, Session, SessionId, SessionSeq, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
+import { canonicalHeader, headerEquals, ToolCallRecovery } from '@deepseek-ai/dsh-session'
 import { joinContextSections, renderContextSections, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-session-projection'
@@ -109,8 +109,6 @@ export class ReactLoopAgent implements Agent {
 
   /** Whether this loop instance has appended its initial/resume request anchor. */
   private requestHeaderLogged = false
-  /** 上次请求已提交的持久注入声明。 */
-  private requestInjections: readonly RequestMessageInjection[]
   /** Surface generation at attachment or the preceding built request. */
   private requestSurfaceGeneration: number
   private readonly runtimeContext: RuntimeContextProjection
@@ -119,7 +117,7 @@ export class ReactLoopAgent implements Agent {
   private assistantAttemptCounter = 0
   private readonly systemPrompt: SystemPromptProjection
   /** Identities fully frozen by this loop; weak references do not retain replaced history. */
-  private readonly frozenMessages = new WeakSet<RequestMessage>()
+  private readonly frozenMessages = new WeakSet<Message>()
 
   constructor(
     private loopCtx: Context,
@@ -137,8 +135,6 @@ export class ReactLoopAgent implements Agent {
     this.phase = { kind: 'idle', lastTurn }
     this.runtimeContext = new RuntimeContextProjection(this.ctx, session)
     this.systemPrompt = new SystemPromptProjection(session)
-    // oxlint-disable-next-line typescript/no-deprecated -- 保留既有恢复读取；后续迁移到持久投影。
-    this.requestInjections = foldRequestMessageInjections(session.snapshotEvents())
   }
 
   get status(): AgentStatus {
@@ -409,12 +405,10 @@ export class ReactLoopAgent implements Agent {
     const renderedPrompt = renderPrompt(assembly)
     let firstAttempt = true
     while (true) {
-      const { config, preparedCall, injections } = await this.prepareRequest(turn, step, signal)
-      const injectionsChanged = !requestMessageInjectionsEqual(this.requestInjections, injections)
-      const startsRequestSeries = (firstAttempt && decision.startsRequestSeries === true) || injectionsChanged
+      const { config, preparedCall } = await this.prepareRequest(turn, step, signal)
+      const startsRequestSeries = firstAttempt && decision.startsRequestSeries === true
       const commits = this.systemPrompt.project(renderedPrompt, {
-        // 注入要求系统提示保留在头部，但稳定注入不会让每次工具续传都开启新请求段。
-        inHistory: preparedCall?.systemPromptUpdate === 'in-history' && injections.length === 0,
+        inHistory: preparedCall?.systemPromptUpdate === 'in-history',
         startsSeries: startsRequestSeries
           || this.requestSurfaceGeneration !== this.session.surface.contentGeneration
           || (preparedCall?.toolUpdate === undefined && this.toolsChanged(assembly.tools)),
@@ -428,7 +422,7 @@ export class ReactLoopAgent implements Agent {
         }
       }
       firstAttempt = false
-      const request = this.buildRequest(config, preparedCall, assembly.tools, { turn, step }, startsRequestSeries, injections, signal)
+      const request = this.buildRequest(config, preparedCall, assembly.tools, { turn, step }, startsRequestSeries, signal)
       const live = new AssistantStreamAttempt(
         this.session.id,
         ++this.assistantAttemptCounter,
@@ -554,7 +548,7 @@ export class ReactLoopAgent implements Agent {
     turn: number,
     step: number,
     signal: AbortSignal,
-  ): Promise<{ config: LlmCallConfig; preparedCall?: PreparedLlmCall; injections: readonly RequestMessageInjection[] }> {
+  ): Promise<{ config: LlmCallConfig; preparedCall?: PreparedLlmCall }> {
     const { session } = this
 
     // A loop instance starts from its declared route, restoring only an explicit
@@ -598,13 +592,7 @@ export class ReactLoopAgent implements Agent {
       config = proposedConfig
     }
     signal.throwIfAborted()
-    const proposedInjections = await this.dispatch.waterfall(
-      'agent/request-injections', { turn, step, signal },
-      () => Promise.resolve<RequestMessageInjection[]>([]),
-    )
-    signal.throwIfAborted()
-    const injections = canonicalRequestMessageInjections(proposedInjections)
-    return { config, injections, ...preparedCall === undefined ? {} : { preparedCall } }
+    return { config, ...preparedCall === undefined ? {} : { preparedCall } }
   }
 
   /** Log the resolved envelope and derive a frozen request from the admitted surface. */
@@ -614,14 +602,9 @@ export class ReactLoopAgent implements Agent {
     tools: GenerateOptions['tools'] & object,
     position: { turn: number; step: number },
     startsRequestSeries: boolean,
-    injections: readonly RequestMessageInjection[],
     signal: AbortSignal,
   ): GenerateOptions {
     const { session } = this
-    if (!requestMessageInjectionsEqual(this.requestInjections, injections)) {
-      const event = session.append('request/injections', { injections: [...injections] })
-      this.requestInjections = canonicalRequestMessageInjections(event.data.injections)
-    }
     const surfaceGeneration = session.surface.contentGeneration
     const header = canonicalHeader({
       config,
@@ -685,7 +668,7 @@ export class ReactLoopAgent implements Agent {
 
     // canonicalHeader is shallow; append logs a detached snapshot, not these local values.
     deepFreeze(header)
-    const boundaryMessages = materializeRequestMessages(session.deriveMessages(), this.requestInjections)
+    const boundaryMessages = session.deriveMessages()
     for (const message of boundaryMessages) {
       if (this.frozenMessages.has(message)) continue
       deepFreeze(message)

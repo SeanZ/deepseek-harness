@@ -242,18 +242,18 @@ describe('the shipped Web composition', () => {
     }
   })
 
-  it('提供内置与创作预设，默认仍为 standard', async () => {
+  it('supplies both shipped presets, and only those, from the system root', async () => {
     const listed = await ctx.agentPresets.list()
 
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'creative', 'minimal', 'ptc', 'standard'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'ptc', 'standard'])
     expect(listed.every(preset => !('path' in preset))).toBe(true)
     expect(ctx.agentPresets.defaultId).toBe('standard')
   })
 
-  it.each(['standard', 'creative'])('真实 Web 组合为 %s 提供完整工具集', async (preset) => {
+  it('composes the full agent from `standard`', async () => {
     const handle = await ctx.agents.create({
-      sessionId: SessionId(`preset-${preset}`),
-      setup: agentCtx => ctx.agentPresets.mount(agentCtx, preset).then(() => undefined),
+      sessionId: SessionId('preset-standard'),
+      setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'standard').then(() => undefined),
     })
     try {
       // The EXACT catalog, not a spot-check: an omission is this design's

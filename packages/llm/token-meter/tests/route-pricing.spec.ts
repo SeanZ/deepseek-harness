@@ -7,11 +7,11 @@ import {
 import type { GenerateOptions, LlmImageRequestPricing, Message, StreamChunk, TokenUsage, UserMessage } from '@deepseek-ai/dsh-llm'
 import { AttachmentId } from '@deepseek-ai/dsh-attachment'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import { Session, SessionId, canonicalHeader, foldRequestMessageInjections, materializeRequestMessages } from '@deepseek-ai/dsh-session'
+import { Session, SessionId, canonicalHeader } from '@deepseek-ai/dsh-session'
 import type { EpochHeader } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import TokenMeter from '@deepseek-ai/dsh-token-meter'
-import { estimateContent, estimateMessage, estimateRequestMessageInjections } from '../src/estimate.ts'
+import { estimateContent, estimateMessage } from '../src/estimate.ts'
 
 /** Adapter double declaring fixed per-occurrence image prices for one route. */
 class PricingAdapter extends LlmAdapter {
@@ -217,9 +217,6 @@ describe('request projection pricing', () => {
     const olderSeq = session.append('user/message', older, { surfaceOp: 'append' }).seq
     session.append('user/message', newer, { surfaceOp: 'append' })
     session.append('request/header', { header: header('vision'), reason: 'initial' })
-    const injections = [{ key: 'creative-context', role: 'assistant' as const, text: '独立注入上下文', source: { kind: 'plugin' as const, plugin: 'test' }, placement: { kind: 'before-latest-user' as const } }]
-    session.append('request/injections', { injections })
-    const beforeMessages = materializeRequestMessages(session.deriveMessages(), injections)
     const before = meter.measure(session)
     expect(before.nodes.map(node => node.tokens)).toEqual([routedMessageTokens(older), routedMessageTokens(newer)])
 
@@ -232,19 +229,9 @@ describe('request projection pricing', () => {
     expect(after.nodes.map(node => node.seq)).toEqual(before.nodes.map(node => node.seq))
     expect(after.nodes.map(node => node.heuristicTokens)).toEqual(before.nodes.map(node => node.heuristicTokens))
     const breakdown = ctx.sessionProjections.snapshot(session).values.contextBreakdown
-    expect(breakdown?.messageTokens).toBe(
-      after.nodes.reduce((total, node) => total + node.heuristicTokens, 0) + estimateRequestMessageInjections(injections),
-    )
-    const events = session.snapshotEvents()
-    const restored = Session.create(SessionId('offloaded-restored'), events, undefined, undefined, [imageOffloadProjection])
+    expect(breakdown?.messageTokens).toBe(after.nodes.reduce((total, node) => total + node.heuristicTokens, 0))
+    const restored = Session.create(SessionId('offloaded-restored'), session.snapshotEvents(), undefined, undefined, [imageOffloadProjection])
     expect(meter.measure(restored).surfaceTokens).toBe(after.surfaceTokens)
-    const messages = materializeRequestMessages(session.deriveMessages(), injections)
-    expect(messages).toEqual(materializeRequestMessages(restored.deriveMessages(), foldRequestMessageInjections(events)))
-    expect(messages[0]?.content[1]).toMatchObject({ type: 'image', offloaded: true })
-    expect(beforeMessages[0]?.content[1]).not.toHaveProperty('offloaded')
-    expect(messages.map(message => message.id)).toEqual(beforeMessages.map(message => message.id))
-    expect(messages[1]?.id).toBe('request-injection:creative-context')
-    expect(meter.measure(restored).totalTokens).toBe(after.totalTokens)
   })
 
   it('fails loud when a route answers a mismatched occurrence count', async () => {

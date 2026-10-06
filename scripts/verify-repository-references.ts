@@ -48,7 +48,7 @@ export function findRepositoryReferences(
       references.push({ file, line: index + 1, kind: 'organization-url' })
     }
     // 自用代理运行手册必须记录实际制品提交，供部署与回滚核验。
-    if (!file.startsWith('.agentdocs/')
+    if (!file.startsWith('.agentdocs/') && file !== 'scripts/purge/lock.json'
       && [...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
       references.push({ file, line: index + 1, kind: 'commit-hash' })
     }

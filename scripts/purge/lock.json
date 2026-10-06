@@ -1,0 +1,295 @@
+{
+  "schemaVersion": 1,
+  "upstreamVersion": "0.2.1-alpha.1",
+  "upstreamTag": "dsh-v0.2.1-alpha.1",
+  "upstreamCommit": "5badb15009ae1756c3afe0ae0cef1faafc290ccc",
+  "purge": {
+    "version": "1.1.59",
+    "commit": "15df041ebe0fbfa8ad6681835659bb3b904692de",
+    "url": "https://codeload.github.com/YuJunZhiXue/dsh-purge/tar.gz/15df041ebe0fbfa8ad6681835659bb3b904692de",
+    "sha256": "adc59de80bc84b7eb0f88539f38296d0a2651d591c7bdae6a7b7dc8fc0db1507"
+  },
+  "runtimeRoots": ["@deepseek-ai/dsh-experimental-agent-team-profile"],
+  "webPatchStatuses": [
+    {
+      "id": 1,
+      "status": "applied"
+    },
+    {
+      "id": 2,
+      "status": "already"
+    },
+    {
+      "id": 3,
+      "status": "already"
+    },
+    {
+      "id": 4,
+      "status": "applied"
+    },
+    {
+      "id": 43,
+      "status": "applied"
+    },
+    {
+      "id": 70,
+      "status": "applied"
+    },
+    {
+      "id": 73,
+      "status": "applied"
+    },
+    {
+      "id": 71,
+      "status": "missing_file"
+    },
+    {
+      "id": 5,
+      "status": "applied"
+    },
+    {
+      "id": 6,
+      "status": "applied"
+    },
+    {
+      "id": 7,
+      "status": "applied"
+    },
+    {
+      "id": 8,
+      "status": "applied"
+    },
+    {
+      "id": 9,
+      "status": "applied"
+    },
+    {
+      "id": 10,
+      "status": "applied"
+    },
+    {
+      "id": 11,
+      "status": "applied"
+    },
+    {
+      "id": 12,
+      "status": "applied"
+    },
+    {
+      "id": 13,
+      "status": "applied"
+    },
+    {
+      "id": 14,
+      "status": "applied"
+    },
+    {
+      "id": 15,
+      "status": "applied"
+    },
+    {
+      "id": 16,
+      "status": "applied"
+    },
+    {
+      "id": 17,
+      "status": "applied"
+    },
+    {
+      "id": 18,
+      "status": "applied"
+    },
+    {
+      "id": 19,
+      "status": "applied"
+    },
+    {
+      "id": 21,
+      "status": "applied"
+    },
+    {
+      "id": 22,
+      "status": "applied"
+    },
+    {
+      "id": 23,
+      "status": "applied"
+    },
+    {
+      "id": 24,
+      "status": "already"
+    },
+    {
+      "id": 25,
+      "status": "applied"
+    },
+    {
+      "id": 26,
+      "status": "applied"
+    },
+    {
+      "id": 28,
+      "status": "missing_file"
+    },
+    {
+      "id": 32,
+      "status": "applied"
+    },
+    {
+      "id": 29,
+      "status": "applied"
+    },
+    {
+      "id": 30,
+      "status": "applied"
+    },
+    {
+      "id": 31,
+      "status": "applied"
+    },
+    {
+      "id": 33,
+      "status": "applied"
+    },
+    {
+      "id": 34,
+      "status": "applied"
+    },
+    {
+      "id": 35,
+      "status": "applied"
+    },
+    {
+      "id": 36,
+      "status": "applied"
+    },
+    {
+      "id": 37,
+      "status": "applied"
+    },
+    {
+      "id": 38,
+      "status": "applied"
+    },
+    {
+      "id": 39,
+      "status": "applied"
+    },
+    {
+      "id": 40,
+      "status": "applied"
+    },
+    {
+      "id": 42,
+      "status": "applied"
+    },
+    {
+      "id": 45,
+      "status": "na"
+    },
+    {
+      "id": 46,
+      "status": "na"
+    },
+    {
+      "id": 47,
+      "status": "applied"
+    },
+    {
+      "id": 48,
+      "status": "applied"
+    },
+    {
+      "id": 49,
+      "status": "applied"
+    },
+    {
+      "id": 50,
+      "status": "already"
+    },
+    {
+      "id": 51,
+      "status": "applied"
+    },
+    {
+      "id": 52,
+      "status": "applied"
+    },
+    {
+      "id": 53,
+      "status": "applied"
+    },
+    {
+      "id": 54,
+      "status": "applied"
+    },
+    {
+      "id": 55,
+      "status": "applied"
+    },
+    {
+      "id": 74,
+      "status": "applied"
+    },
+    {
+      "id": 66,
+      "status": "applied"
+    },
+    {
+      "id": 67,
+      "status": "applied"
+    },
+    {
+      "id": 68,
+      "status": "applied"
+    },
+    {
+      "id": 69,
+      "status": "applied"
+    },
+    {
+      "id": 72,
+      "status": "applied"
+    },
+    {
+      "id": 56,
+      "status": "applied"
+    },
+    {
+      "id": 57,
+      "status": "applied"
+    },
+    {
+      "id": 58,
+      "status": "applied"
+    },
+    {
+      "id": 59,
+      "status": "applied"
+    },
+    {
+      "id": 60,
+      "status": "already"
+    },
+    {
+      "id": 61,
+      "status": "already"
+    },
+    {
+      "id": 62,
+      "status": "applied"
+    },
+    {
+      "id": 63,
+      "status": "already"
+    },
+    {
+      "id": 64,
+      "status": "applied"
+    },
+    {
+      "id": 65,
+      "status": "applied"
+    }
+  ]
+}

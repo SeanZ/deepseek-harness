@@ -581,11 +581,6 @@
     },
     {
       "doc": "docs/subsystems/session.md",
-      "symbol": "RequestMessageInjection",
-      "source": "packages/core/session/src/types.ts"
-    },
-    {
-      "doc": "docs/subsystems/session.md",
       "symbol": "SessionEventMap",
       "source": "packages/core/session/src/types.ts"
     },

@@ -5,11 +5,10 @@
 import { z } from 'zod'
 import { lastAssistantStreamChunk, type TokenUsage } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm-retry/types'
-import { canonicalRequestMessageInjections, SessionSeq } from '@deepseek-ai/dsh-session'
+import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { ContextPressureProjection, TokenUsageProjection } from './projection.ts'
-import { estimateRequestMessageInjections } from './estimate.ts'
 import { foldSurfaceProjection } from './surface-projection.ts'
 
 const zeroBuckets = (): TokenUsageProjection => ({
@@ -98,7 +97,6 @@ const contextPressureStateSchema = z.object({
   contextWindow: z.number().int().positive().optional(),
   pressureTokens: z.number().int().nonnegative().optional(),
   surfaceTokens: z.number().int().nonnegative(),
-  injectionTokens: z.number().int().nonnegative(),
   sampledSurfaceTokens: z.number().int().nonnegative().optional(),
   claim: z.object({
     start: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).transform(SessionSeq),
@@ -176,22 +174,10 @@ export const contextPressureProjectionDefinition = {
   key: 'contextPressure',
   stateVersion: 5,
   stateSchema: contextPressureStateSchema,
-  init: () => ({ surfaceTokens: 0, injectionTokens: 0 }),
+  init: () => ({ surfaceTokens: 0 }),
   apply: (state, event) => {
     const fold = foldSurfaceProjection(state.claim, event)
     let next = state
-    if (event.type === 'request/injections') {
-      const injectionTokens = estimateRequestMessageInjections(
-        canonicalRequestMessageInjections(event.data.injections),
-      )
-      if (injectionTokens !== state.injectionTokens) {
-        next = {
-          ...next,
-          surfaceTokens: next.surfaceTokens + injectionTokens - state.injectionTokens,
-          injectionTokens,
-        }
-      }
-    }
     if (event.type === 'request/context') {
       const contextWindow = event.data.contextWindow
       if (contextWindow !== state.contextWindow) {

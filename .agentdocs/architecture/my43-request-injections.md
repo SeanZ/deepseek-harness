@@ -1,5 +1,7 @@
 # my43 请求注入与运行契约
 
+> 此文保留退役方案与旧部署的历史约束。dev 现行实现以 [purge 集成流程](purge-integration.md) 为准；本文不能用于判断当前生产版本。
+
 ## 补丁边界
 
 当前维护目标为官方 `dsh-v0.2.0-rc.2`；生产切换状态以当前任务文档为准，保留最初迁入 alpha.2 的 `agentLoop.requestInjectionsVersion = 2` 与 `agent/request-injections` waterfall。声明是完整快照，空数组清空；生产者 key 必须唯一，只接受带插件来源的 assistant 文本。最新人类输入前锚定不会随连续工具调用漂移，depth 定位按完整工具交互计数，且不得越过开头的 system 消息。

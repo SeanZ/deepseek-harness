@@ -527,29 +527,3 @@ describe('shared estimator', () => {
       .toBe(Math.ceil(JSON.stringify(TOOLS).length / 4) + 4)
   })
 })
-
-it('注入占用跨历史追加保留，清空后恢复为纯历史估值', async () => {
-  const { ctx, session } = await harness()
-  session.append('turn/start', { turn: 1 })
-  appendSystem(session, '系统')
-  appendUser(session, '请求')
-  const baseline = projected(ctx, session)
-  const injection = {
-    key: 'context', role: 'assistant' as const, text: '上下文'.repeat(100),
-    source: { kind: 'plugin' as const, plugin: 'test' },
-    placement: { kind: 'before-latest-user' as const },
-  }
-  session.append('request/injections', { injections: [injection] })
-  const active = projected(ctx, session)
-  const extra = active.messageTokens - baseline.messageTokens
-  expect(extra).toBeGreaterThan(75)
-  expect(active.systemTokens).toBe(baseline.systemTokens)
-  appendUser(session, '后续输入')
-  const withHistory = projected(ctx, session)
-  expect(withHistory.messageTokens).toBeGreaterThan(active.messageTokens)
-  session.append('request/injections', { injections: [] })
-  expect(projected(ctx, session).messageTokens).toBe(withHistory.messageTokens - extra)
-  expect(ctx.tokenMeter.measure(session).totalTokens).toBe(
-    projected(ctx, session).systemTokens + projected(ctx, session).messageTokens,
-  )
-})

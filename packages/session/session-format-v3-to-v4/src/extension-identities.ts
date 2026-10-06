@@ -34,7 +34,6 @@ export const RELEASED_V3_EVENT_TYPES: ReadonlySet<string> = new Set([
   'plan/mode',
   'request/context',
   'request/header',
-  'request/injections',
   'sandbox/mode',
   'schedule/change',
   'session-log-deepseek/delivery-accepted',

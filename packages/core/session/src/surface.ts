@@ -8,7 +8,6 @@
  * @module @deepseek-ai/dsh-session/surface
  */
 
-import { canonicalRequestMessageInjections } from './request-injections.ts'
 import type { Message, ToolSchema } from '@deepseek-ai/dsh-llm'
 import { SessionLogOffset, SessionSeq } from './types.ts'
 import { KNOWN_SESSION_EVENT_TYPES, MESSAGE_PROJECTION_EVENT_TYPES } from './known-event-types.ts'
@@ -210,9 +209,6 @@ export function validateSessionEventData(
     if (isRecord(defaults) && Object.keys(defaults).length === 0) {
       throw new Error(`${subject} must omit empty adapterDefaults`)
     }
-  } else if (event.type === 'request/injections') {
-    if (!isRecord(data)) throw new Error(`${subject} data must be an object`)
-    canonicalRequestMessageInjections(data['injections'])
   } else if (event.type === 'tool/result') {
     if (!isRecord(data)) throw new Error(`${subject} data must be an object`)
     if (data['error'] === undefined) return

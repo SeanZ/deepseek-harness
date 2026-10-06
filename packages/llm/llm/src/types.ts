@@ -7,7 +7,7 @@
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { MessageId, ToolCallId, ProviderRequestId, ReasoningEffortId } from './brand.ts'
-import type { Message, RequestInjectionMessage, UserMessage } from './message.ts'
+import type { Message, UserMessage } from './message.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
@@ -26,7 +26,6 @@ declare module '@deepseek-ai/cordis' {
 
 export type {
   AssistantMessage,
-  RequestInjectionMessage,
   DeveloperMessage,
   AssistantProviderMetadata,
   Message,
@@ -493,7 +492,7 @@ export interface RequestUserInput {
 }
 
 /** A durable conversation message or a user input used only for one request. */
-export type RequestMessage = Message | RequestUserInput | RequestInjectionMessage
+export type RequestMessage = Message | RequestUserInput
 
 /** Logged tool declarations and update identities since the last declaration reset. */
 export interface ToolHistory {

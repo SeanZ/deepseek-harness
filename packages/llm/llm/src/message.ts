@@ -169,12 +169,6 @@ export interface AssistantMessage extends MessageBase {
   readonly source: ModelMessageSource
 }
 
-/** 请求专用的 assistant 消息，内容由 request/injections 事件持久化而非模型生成。 */
-export interface RequestInjectionMessage extends Omit<MessageBase, 'source'> {
-  readonly role: 'assistant'
-  readonly source: { readonly kind: 'plugin:request-injection'; readonly plugin: string }
-}
-
 /** A first-class tool-role message carrying the result of one tool invocation. */
 export interface ToolResultMessage extends MessageBase {
   readonly role: 'tool'

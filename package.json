@@ -201,7 +201,10 @@
     "mock:llm": "node --import tsx packages/test-support/llm-mock-server/src/bin.ts",
     "start:web": "node --import tsx/esm apps/cli/src/bin.ts web",
     "dev:web": "tsx scripts/dev-web.ts --poll",
-    "postinstall": "node scripts/install-lefthook.mjs"
+    "postinstall": "node scripts/install-lefthook.mjs",
+    "purge:build": "node scripts/purge/build.mjs",
+    "purge:install": "node scripts/purge/install.mjs",
+    "purge:test": "node scripts/purge/test.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-agent": "workspace:*",

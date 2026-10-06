@@ -1,0 +1,10 @@
+{
+  "plugins": ["oxc"],
+  "categories": { "correctness": "error" },
+  "env": { "node": true, "es2024": true },
+  "rules": {
+    "no-unused-vars": "error",
+    "no-undef": "error",
+    "no-empty": "error"
+  }
+}

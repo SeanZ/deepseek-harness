@@ -87,16 +87,15 @@ A **step** is one model request plus the tools it calls. A **turn** is zero or m
 
 ```text
 turn/start
-  claim next-step input and queued message
+  claim next-step input plus one queued message
   assemble prompt sections + tool schemas; project runtime context
   -> agent/pre-step                   reject | enter(messages, startsRequestSeries?)
      reject, or a first enter rewritten empty -> close the turn with no step
      step/start
      agent/request -> prepareCall (cancellation commits neither system nor users)
-     agent/request-injections -> validate snapshot
      reconcile system/message using the prepared call capability
      append entered messages as user/message; log request/header and request/context as needed
-     log request/injections changes; materialize messages
+     derive and freeze model history from the log
      stream the bound prepared call -> llm/stream -> agent/assistant-stream start
        agent/assistant-stream chunk*
        assistant/message | assistant/attempt -> agent/assistant-stream end
