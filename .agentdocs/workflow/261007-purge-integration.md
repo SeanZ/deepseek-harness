@@ -17,9 +17,10 @@ purge 会修改运行时文件和权限默认值。补丁应用必须限制在�
 - [x] 确认 fork/dev、官方基线与未提交文件，保存原始改动副本。
 - [x] 退出旧核心实现，建立固定版本集成和官方构建打包入口。
 - [x] 构造脱敏回归并通过本地构建、类型、lint、文档与持久化/真实入口检查。
-- [ ] 提交并推送 origin/dev，回读远端提交。
-- [ ] 上传同一制品到 my43；独立 home/port 验证新会话、旧历史、配置、真实模型和重启。
-- [ ] 更新长期维护约束，等待人工验收；确认无其他改动后归档。
+- [x] 提交并推送 origin/dev，回读远端提交。
+- [x] 上传同一制品到 my43；独立 home/port 验证新会话、旧历史、配置、真实模型和重启。
+- [x] 更新长期维护约束。
+- [ ] 浏览器首次使用须知等待用户确认；设置页和人工验收未完成，确认无其他改动后归档。
 
 ## 验收数据
 
@@ -29,4 +30,14 @@ purge 会修改运行时文件和权限默认值。补丁应用必须限制在�
 
 官方构建完成；完整集成流程在新的临时目录安装 291 个包，校验 6414 个文件。19 项制品/平台测试通过，一次性旧格式导出覆盖 V0–V4 与分叉；核心定向回归 1945 项通过、1 项既有跳过，仓库引用门禁 12 项通过。doc-sync 42 项通过，仓库及 MJS 专项 lint、语法和 Prettier 检查通过。Apple Git 2.39 不支持门禁测试所需 GIT_NO_LAZY_FETCH，使用已安装 Git 2.52 验证通过。
 
-固定 Web 规则为 59 applied、7 already、2 missing_file、2 na。purge 路径识别不接受包含 deepseek-harness 的 Web 运行时；构建在系统临时目录应用并将文件封存回跨平台原始 tarball。macOS 的 /var 与 /private/var 用 realpath 比较。启动后延迟自愈窗口结束，制品字节仍相同。
+固定 Web 规则为 59 applied、7 already、2 missing_file、2 na；缺失项仅针对未安装的 Liangshen 扩展，不适用项仅针对桌面更新。purge 路径识别不接受包含 deepseek-harness 的 Web 运行时；构建在系统临时目录应用并将文件封存回跨平台原始 tarball。macOS 的 /var 与 /private/var 用 realpath 比较。启动后延迟自愈窗口结束，制品字节仍相同。
+
+## my43 隔离验收
+
+集成提交已推送 origin/dev：5babbb9f8b6489746729b857378379f63410c0d8。归档 SHA-256 为 36299101cee11749bfd26e8b02d554762ed734def20f006d979d443165c0d9ba，目标机校验后仅安装相同 tarball，不重编译、不现场应用补丁。Linux 19 项验收全部通过，运行包和文件校验与本地一致。
+
+隔离实例为 /home/ubuntu/dsh-canary/20261007-purge/integrated-runtime 与 integrated-home，dsh-purge-acceptance 临时 unit 绑定 127.0.0.1:3083。操作系统只允许写入该 home，运行时及生产目录只读。正式 current 仍为 /home/ubuntu/dsh-releases/20261006-source-r2，未切换生产。
+
+真实历史副本 105 个会话中 100 个可恢复、5 个既有不可读；转换 10 个会话的 13 条旧注入事件，168 个源文件哈希未变。新旧可读会话逐条比较消息、事件、继承切点，未扩大失败。DeepSeek standard 和 GLM creative 各完成 6 次只读工具调用，均正常结束、仅 initial 请求头与一个系统提示、旧注入事件为 0。重启后配置、11 个模型、Agent Team、purge、历史兼容别名和历史列表再次通过 HTTP 回读，生产配置摘要未变。
+
+purge 相对原实例改变 bash-sandbox.timeoutMs：60000 → 600000、subagent.maxDepth：1 → 10；其它同名设置逐字段保持，unrestricted namespace 随旧插件退出。浏览器成功加载应用和 purge 首次须知；涉及禁止商业转售与免责的确认已询问用户，未代为接受，设置页人工验收仍待完成。
