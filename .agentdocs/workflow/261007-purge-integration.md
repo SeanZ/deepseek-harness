@@ -12,7 +12,19 @@
 
 purge 会修改运行时文件和权限默认值。补丁应用必须限制在独立运行时/home；记录实际匹配和缺失规则，不能将跳过视为成功。启动后的宿主自修改需纳入完整性与边界测试，保留可复现版本。
 
-## 1.1.60 升级计划
+## zxh 正式切换与清理
+
+用户于 2026-10-07 明确授权升级 zxh.tackd.net 并清理 my43 冗余备份和构建制品。正式 release 为 /home/ubuntu/dsh-releases/20261007-purge-1160，dsh.service/current 已切换，home 与 3080 端口保持。旧完整 home 与旧运行时共同保留；回退和域名 Cookie 验证规则见集成架构文档。
+
+- [x] 重新读取最新配置、默认模型及 105 个会话，确认无活动会话。
+- [x] 安装同一封存制品，迁移最新历史，保留原 home 并切换正式服务。
+- [x] 验证配置、模型、旧 Cookie、可信域名 Origin、两模型各六次只读调用及重启后持久化，291 个包、6414 个文件一致。
+- [x] 清理已审计的冗余备份与制品，回读服务、数据保护项与磁盘空间。
+- [ ] 本人完成 Authelia 登录后的公网页面验收。
+
+9 项冗余目录删除并回读通过，实际释放 4.79 GiB、系统盘可用 34.06 GiB；服务状态/PID/HTTP、两套 npm 缓存及保留路径身份一致。审计为 /home/ubuntu/dsh-maintenance/cleanup-20261007-purge-unused.json。原始 105 个会话均保留；清理回读时共 108 个会话，升级后新增会话及当前 deepseek-v4-pro 默认选择均保留。配置、11 模型、域名来源、两个真实验收会话持久化和 291 包/6414 文件检查再次通过。
+
+## 1.1.60 隔离升级阶段（历史）
 
 用户在完成 1.1.59 浏览器验收后要求升级至 1.1.60，沿用本地 dev 集成、同一制品 my43 隔离验收流程，生产切换仍不在本阶段。保留 1.1.59 制品与隔离 home，升级使用新的输出和运行目录。
 
@@ -25,11 +37,11 @@ purge 会修改运行时文件和权限默认值。补丁应用必须限制在�
 
 本地完整官方重构建后，1.1.60 对独立运行时修改 50 个文件；封存和 24 项验收通过，291 个运行包、6414 个文件一致。四个预设均验证实际模型请求和工作区上下文，多轮回退验证真实 Session、压缩持久化重开及客户端增量窗口；旧 1.1.59 对新的轮次定位用例按预期失败。交付归档 SHA-256 为 96c76ec04cae6efc3f1040f2111f2a6c15637c0d3a93ccb5db340b5f54006f95。
 
-1.1.60 隔离实例为 /home/ubuntu/dsh-canary/20261007-purge-1160，制品目录为 /home/ubuntu/dsh-artifacts/20261007-purge-1160；dsh-purge-1160-acceptance 临时 unit 绑定 127.0.0.1:3084，仅允许写 integrated-home。Linux 24 项通过。冻结历史副本仍为 105 个会话、100 可恢复、5 个既有失败，转换 10 个会话的 13 条事件，168 个源文件未变。旧读取器固定使用 /home/ubuntu/dsh-releases/20261006-source-r2，不使用早期测试 runtime。
+1.1.60 当时隔离实例为 /home/ubuntu/dsh-canary/20261007-purge-1160，制品目录为 /home/ubuntu/dsh-artifacts/20261007-purge-1160；dsh-purge-1160-acceptance 临时 unit 绑定 127.0.0.1:3084，仅允许写 integrated-home。Linux 24 项通过。冻结历史副本仍为 105 个会话、100 可恢复、5 个既有失败，转换 10 个会话的 13 条事件，168 个源文件未变。旧读取器固定使用 /home/ubuntu/dsh-releases/20261006-source-r2，不使用早期测试 runtime。
 
 DeepSeek standard 与 GLM creative 兼容入口各完成 6 次只读工具调用；DeepSeek minimal 与 PTC 实际调用可用工具后正常结束。服务端撤回保持同一个 session，原始事件前缀不变，前轮保留、被撤回轮次从模型上下文消失，随后重发完成。浏览器 v1.1.60 实际按钮撤回后，正文即时更新、草稿恢复，重发完成，浏览器无警告或错误。轮次导航与累计统计仍含已撤回编号，已记录为版本表现，不声称已修复。截图位于 .artifacts/purge-1160/remote-evidence/rewind-immediate.jpg。
 
-欢迎页已读标记恢复隔离配置基线；回读 19 个 namespace、11 个模型，配置差异仍仅为既定 bash 超时和子代理深度，生产配置摘要未变。重启后撤回上下文与重发消息重新读取通过，291 个包、6414 个文件仍与封存制品相同。生产服务 PID 2565423 与 1.1.59 实例保留，最终人工验收仍待用户完成。
+欢迎页已读标记恢复隔离配置基线；回读 19 个 namespace、11 个模型，配置差异仍仅为既定 bash 超时和子代理深度，生产配置摘要未变。重启后撤回上下文与重发消息重新读取通过，291 个包、6414 个文件仍与封存制品相同。当时生产服务 PID 2565423 与 1.1.59 实例保留。正式切换后两套隔离验收实例均已退役，公网人工验收见正式切换阶段。
 
 ## 1.1.59 阶段基线
 
@@ -52,7 +64,7 @@ DeepSeek standard 与 GLM creative 兼容入口各完成 6 次只读工具调用
 
 固定 Web 规则为 59 applied、7 already、2 missing_file、2 na；缺失项仅针对未安装的 Liangshen 扩展，不适用项仅针对桌面更新。purge 路径识别不接受包含 deepseek-harness 的 Web 运行时；构建在系统临时目录应用并将文件封存回跨平台原始 tarball。macOS 的 /var 与 /private/var 用 realpath 比较。启动后延迟自愈窗口结束，制品字节仍相同。
 
-## my43 隔离验收
+## my43 1.1.59 隔离验收（历史）
 
 集成提交已推送 origin/dev：5babbb9f8b6489746729b857378379f63410c0d8。归档 SHA-256 为 36299101cee11749bfd26e8b02d554762ed734def20f006d979d443165c0d9ba，目标机校验后仅安装相同 tarball，不重编译、不现场应用补丁。Linux 19 项验收全部通过，运行包和文件校验与本地一致。
 
@@ -62,4 +74,4 @@ DeepSeek standard 与 GLM creative 兼容入口各完成 6 次只读工具调用
 
 purge 相对原实例改变 bash-sandbox.timeoutMs：60000 → 600000、subagent.maxDepth：1 → 10；其它同名设置逐字段保持，unrestricted namespace 随旧插件退出。用户确认首次须知后，浏览器已验证 purge 面板、通用设置、内置插件和 Agent 预设页面，standard 为默认、creative 显示为历史兼容入口；浏览器无警告或错误。面板仍为固定 1.1.59，未操作更新、应用、还原或卸载。
 
-浏览器验收产生的唯一额外设置变化为 ui-settings-general.welcomeNoticeVersion，已通过带 expectedRevision 的 settings/replace 恢复隔离实例原值；随后完整设置回读通过。页面操作后再次核对 291 个包、6414 个文件，均与封存制品相同。截图保留于忽略目录 .artifacts/purge-transition/remote-evidence/settings-presets.jpg。隔离入口与转发保留供用户人工验收，生产未切换。
+浏览器验收产生的唯一额外设置变化为 ui-settings-general.welcomeNoticeVersion，已通过带 expectedRevision 的 settings/replace 恢复隔离实例原值；随后完整设置回读通过。页面操作后再次核对 291 个包、6414 个文件，均与封存制品相同。截图保留于忽略目录 .artifacts/purge-transition/remote-evidence/settings-presets.jpg。当时生产未切换；此隔离入口与转发现已退役，当前正式入口见上文。

@@ -24,7 +24,7 @@ purge:build 包含单元、压缩历史、CLI/SDK 业务与 Web profile 验收�
 
 node scripts/purge/profile.mjs --runtime <新运行时> --home <新home> --previous <旧web-profile> 只读旧配置并生成新 profile，移除三个旧扩展，保留其它 bundle 与用户设置；已有目标 profile 拒绝覆盖。凭据只能复制至权限受限的隔离 home，不进脚本参数、日志或提交。真实请求、旧会话副本、平台原生依赖和实际 HTTP 入口仍须在 my43 验收；脱敏本地测试不能替代它们。
 
-隔离服务绑定新的 loopback 端口，设置 DSH_HOME、DSH_BASE、DSH_SURFACE=web 和独立 DSH_AGENTS_HOME。生产 current、home、systemd 服务和入口均不随上传自动切换。现阶段任务是运行验收，正式切换另行明确。
+隔离服务绑定新的 loopback 端口，设置 DSH_HOME、DSH_BASE、DSH_SURFACE=web 和独立 DSH_AGENTS_HOME。生产 current、home、systemd 服务和入口均不随上传自动切换。正式切换须由用户明确指定目标实例；本次 zxh 切换已获授权，当前路径见下节。
 
 ## 一次性旧历史迁移
 
@@ -33,3 +33,15 @@ node scripts/purge/profile.mjs --runtime <新运行时> --home <新home> --previ
 对于 V0–V4 原始压缩数据，使用 node scripts/purge/legacy-export.mjs --source <原件目录> --destination <新输出目录> --legacy-runtime <保留的旧运行时> --runtime <新运行时> --expected-unreadable <已核实数量> --receipt <回执路径>。旧读取器只操作原件副本；含旧注入的会话导出官方 V4 generation，旧注入逐条改为 ignorable 的 plugin:legacy-request-injections 审计事件，保持载荷、seq、time、事件数和继承切点。它们不再参与模型请求重建，不能声称与旧提示语义等价。原件和旧运行时必须保留用于回退。
 
 导出前后校验全部物理会话均已列出、所有可读会话的事件与聊天消息等价、既有损坏数量不扩大、源文件哈希不变。未知 required 事件和损坏 payload 不自动吞掉。V3/V4 的无旧读取器转换另由 history.mjs 覆盖；旧格式须使用 legacy-export。历史 creative ID 仅生成为当前 standard 的完整兼容别名，不自带业务提示。
+
+## zxh 正式部署与回退
+
+2026-10-07 经用户授权，zxh.tackd.net 的 dsh.service 使用 /home/ubuntu/dsh-releases/20261007-purge-1160，current 与 /usr/local/bin/dsh 指向该版本，生产 home 仍为 /home/ubuntu/.dsh、agents 为 /home/ubuntu/.agents，监听 127.0.0.1:3080。Caddy、Authelia、trusted-host 和启动后 bootstrap 机制保持原配置。正式 release 安装本地验收后的同一封存制品，不复制隔离测试会话。
+
+切换前须再次确认无运行中会话、读取最新有效配置和默认模型。停服后复制非历史状态到新 home，并用上一正式运行时读取最新历史，导出及比较通过后才同时切换 home 和 current。105 个原会话均保留，100 个可恢复、5 个既有失败；本次不修复既有损坏。旧原件完整保留在 /home/ubuntu/dsh-backups/20261007-pre-purge-1160/original-home；对应旧运行时为 /home/ubuntu/dsh-releases/20261006-source-r2。
+
+回退必须先停服务、保全升级后新 home，再恢复 original-home 和对应旧 release；不能只回切 current，也不能覆盖升级后的新增聊天。本次维护脚本与回执位于 /home/ubuntu/dsh-maintenance/20261007-purge-production。切换脚本初次检查失败时自动恢复旧状态，后续已产生正式新数据时须先评估数据差异再回退。
+
+DSH 登录 Cookie 的名称和签名 audience 绑定 Host authority。验证 zxh 的可信 Origin 时必须用同一域名 Host 兑换 Cookie；不能把 127.0.0.1 的 Cookie 混用于 zxh。Node fetch 的 Host 处理也可能使代理腿测试失真，低层 HTTP 测试应显式保留 Host。服务端域名校验和匿名 Authelia 跳转均不能代替本人登录后的公网浏览器验收。
+
+清理已移除 20261003-021alpha1、20261006-101516-pre-source-r2 备份和旧验收 canary，历史文档中的这些路径不再可回退。保留本节当前及上一版 release、最新原始 home、两版正式安装包与 dist、维护回执及 npm 缓存。后续清理必须重新核对现场引用，不能重放此次清单。验收后的用户新会话与模型选择作为新现场保留，不能用旧验收基线覆盖。
