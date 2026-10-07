@@ -4,291 +4,371 @@
   "upstreamTag": "dsh-v0.2.1-alpha.1",
   "upstreamCommit": "5badb15009ae1756c3afe0ae0cef1faafc290ccc",
   "purge": {
-    "version": "1.1.59",
-    "commit": "15df041ebe0fbfa8ad6681835659bb3b904692de",
-    "url": "https://codeload.github.com/YuJunZhiXue/dsh-purge/tar.gz/15df041ebe0fbfa8ad6681835659bb3b904692de",
-    "sha256": "adc59de80bc84b7eb0f88539f38296d0a2651d591c7bdae6a7b7dc8fc0db1507"
+    "version": "1.1.60",
+    "commit": "af13e8c201b526dc3bbce949351fb46a762eb1eb",
+    "url": "https://codeload.github.com/YuJunZhiXue/dsh-purge/tar.gz/af13e8c201b526dc3bbce949351fb46a762eb1eb",
+    "sha256": "c178dbf7c3e7f4932934c358a75223fe55f4c42dcd1bc34aee991a2356c52f4b"
   },
   "runtimeRoots": ["@deepseek-ai/dsh-experimental-agent-team-profile"],
   "webPatchStatuses": [
     {
       "id": 1,
+      "name": "WORKSPACE_CONTEXT_INTRO",
       "status": "applied"
     },
     {
       "id": 2,
+      "name": "REPLACEMENT_WORKSPACE_CONTEXT_INTRO",
       "status": "already"
     },
     {
       "id": 3,
+      "name": "SCOPE_INTRO",
       "status": "already"
     },
     {
       "id": 4,
+      "name": "SYSTEM_PROMPT_PERSONA",
       "status": "applied"
     },
     {
       "id": 43,
+      "name": "WEB_PRESET_IDENTITY_STRIP",
       "status": "applied"
     },
     {
       "id": 70,
+      "name": "PRESET_SHELL_NETWORK",
       "status": "applied"
     },
     {
       "id": 73,
+      "name": "PRESET_BASH_MIRROR_LINE",
       "status": "applied"
     },
     {
       "id": 71,
+      "name": "LIANGSHEN_IDENTITY_LINE",
       "status": "missing_file"
     },
     {
       "id": 5,
+      "name": "APPROVAL_NEVER_SENTENCE",
       "status": "applied"
     },
     {
       "id": 6,
+      "name": "SANDBOX_DENY_FILE_WRITE",
       "status": "applied"
     },
     {
       "id": 7,
+      "name": "SANDBOX_MODE_DEFAULT",
       "status": "applied"
     },
     {
       "id": 8,
+      "name": "APPROVAL_POLICY_DEFAULT",
       "status": "applied"
     },
     {
       "id": 9,
+      "name": "APPROVAL_AUTO_GRANT",
       "status": "applied"
     },
     {
       "id": 10,
+      "name": "APPROVAL_CONFIG_DEFAULT_NEVER",
       "status": "applied"
     },
     {
       "id": 11,
+      "name": "APPROVAL_NEVER_SENTENCE_BYPASS",
       "status": "applied"
     },
     {
       "id": 12,
+      "name": "APPROVAL_ASK_SENTENCE_BYPASS",
       "status": "applied"
     },
     {
       "id": 13,
+      "name": "ESCALATION_WIDENING_EXEMPT",
       "status": "applied"
     },
     {
       "id": 14,
+      "name": "ESCALATION_GRANT_UNCONDITIONAL",
       "status": "applied"
     },
     {
       "id": 15,
+      "name": "SANDBOX_CONFINE_PASSTHROUGH",
       "status": "applied"
     },
     {
       "id": 16,
+      "name": "FS_FENCE_DISABLED",
       "status": "applied"
     },
     {
       "id": 17,
+      "name": "FS_OBSERVATION_INTENT_FREE",
       "status": "applied"
     },
     {
       "id": 18,
+      "name": "REPEAT_TOOL_REMINDER_DISABLED",
       "status": "applied"
     },
     {
       "id": 19,
+      "name": "TOOL_RESULT_PRUNER_DISABLED",
       "status": "applied"
     },
     {
       "id": 21,
+      "name": "BASH_TIMEOUT_RAISED",
       "status": "applied"
     },
     {
       "id": 22,
+      "name": "READ_CAPS_RAISED",
       "status": "applied"
     },
     {
       "id": 23,
+      "name": "SUBAGENT_MAXDEPTH_RAISED",
       "status": "applied"
     },
     {
       "id": 24,
+      "name": "PRESET_FETCH_ENABLED",
       "status": "already"
     },
     {
       "id": 25,
+      "name": "HARNESS_IDENTITY_STRIP",
       "status": "applied"
     },
     {
       "id": 26,
+      "name": "MINIMAL_PERSONA_PURGE",
       "status": "applied"
     },
     {
       "id": 28,
+      "name": "LIANGSHEN_PHASE1_KEEP_INJECT",
       "status": "missing_file"
     },
     {
       "id": 32,
+      "name": "WEB_SURFACE_IDENTITY_NEUTRAL",
       "status": "applied"
     },
     {
       "id": 29,
+      "name": "TOOL_WEB_UNTRUSTED_NEUTRAL",
       "status": "applied"
     },
     {
       "id": 30,
+      "name": "HOOKS_CLAUDE_DENY_ALLOW",
       "status": "applied"
     },
     {
       "id": 31,
+      "name": "HOOKS_CODEX_DENY_ALLOW",
       "status": "applied"
     },
     {
       "id": 33,
+      "name": "TOOL_SHELL_DENIAL_PROMPT",
       "status": "applied"
     },
     {
       "id": 34,
+      "name": "SANDBOX_HINT_NEUTRAL",
       "status": "applied"
     },
     {
       "id": 35,
+      "name": "ESCALATION_NEVER_REJECT",
       "status": "applied"
     },
     {
       "id": 36,
+      "name": "TOOL_FS_ESCALATION_SCHEMA",
       "status": "applied"
     },
     {
       "id": 37,
+      "name": "SUBAGENT_SCOPE_LOCK_NEUTRAL",
       "status": "applied"
     },
     {
       "id": 38,
+      "name": "PERSONA_TEXT_PREFIX_ALIAS",
       "status": "applied"
     },
     {
       "id": 39,
+      "name": "SESSION_V0_PLUGIN_SUMMARY_ALIAS",
       "status": "applied"
     },
     {
       "id": 40,
+      "name": "COMPLETE_PROMPT_KEEP_INJECT",
       "status": "applied"
     },
     {
       "id": 42,
+      "name": "SETTINGS_LEGACY_API",
       "status": "applied"
     },
     {
       "id": 45,
+      "name": "OFFICIAL_DESKTOP_UPDATE_HANDOFF",
       "status": "na"
     },
     {
       "id": 46,
+      "name": "OFFICIAL_DESKTOP_UPDATE_ASCII",
       "status": "na"
     },
     {
       "id": 47,
+      "name": "ANTHROPIC_OAUTH_NO_CLAUDE_IDENTITY",
       "status": "applied"
     },
     {
       "id": 48,
+      "name": "TOOL_SHELL_DELETE_MOVE_NEUTRAL",
       "status": "applied"
     },
     {
       "id": 49,
+      "name": "ANTHROPIC_OAUTH_CLI_NEUTRAL",
       "status": "applied"
     },
     {
       "id": 50,
+      "name": "SESSION_REFERENCE_FRAMING_NEUTRAL",
       "status": "already"
     },
     {
       "id": 51,
+      "name": "FRESH_SESSION_FULL_ACCESS",
       "status": "applied"
     },
     {
       "id": 52,
+      "name": "SESSION_LOG_UPLOAD_DEFAULT_OFF",
       "status": "applied"
     },
     {
       "id": 53,
+      "name": "WEB_SURFACE_PROHIBITION",
       "status": "applied"
     },
     {
       "id": 54,
+      "name": "DELIVERABLE_DO_NOT",
       "status": "applied"
     },
     {
       "id": 55,
+      "name": "SYSTEM_PROMPT_REPLACE_HEAD",
       "status": "applied"
     },
     {
       "id": 74,
+      "name": "ASSEMBLE_BEFORE_PRESTEP",
       "status": "applied"
     },
     {
       "id": 66,
+      "name": "SYSTEM_PROMPT_RENDER_GUARD",
       "status": "applied"
     },
     {
       "id": 67,
+      "name": "AGENT_LOOP_MESSAGES_GUARD",
       "status": "applied"
     },
     {
       "id": 68,
+      "name": "SYSTEM_NODES_CONTENT_GUARD",
       "status": "applied"
     },
     {
       "id": 69,
+      "name": "MODEL_STREAM_RELEASE",
       "status": "applied"
     },
     {
       "id": 72,
+      "name": "MESSAGES_SYSTEM_CURRENT",
       "status": "applied"
     },
     {
       "id": 56,
+      "name": "REWIND_HIDE_CUT_ONLY",
+      "status": "applied"
+    },
+    {
+      "id": 74,
+      "name": "REWIND_DROP_SENT_ON_APPEND",
+      "status": "applied"
+    },
+    {
+      "id": 75,
+      "name": "REWIND_RESET_TODOS",
       "status": "applied"
     },
     {
       "id": 57,
+      "name": "DEEPSEEK_SYSTEM_ROLE",
       "status": "applied"
     },
     {
       "id": 58,
+      "name": "REWIND_SKIP_DERIVE",
       "status": "applied"
     },
     {
       "id": 59,
+      "name": "OFFICIAL_AUTO_REVIEW_PASSTHROUGH",
       "status": "applied"
     },
     {
       "id": 60,
-      "status": "already"
+      "name": "OFFICIAL_RUN_CODE_APPROVAL_NEUTRAL",
+      "status": "applied"
     },
     {
       "id": 61,
-      "status": "already"
+      "name": "OFFICIAL_SANDBOX_POLICY_NEUTRAL",
+      "status": "applied"
     },
     {
       "id": 62,
+      "name": "OFFICIAL_TOOL_ASK_FAILOPEN",
       "status": "applied"
     },
     {
       "id": 63,
-      "status": "already"
+      "name": "OFFICIAL_PLAN_MODE_NEUTRAL",
+      "status": "applied"
     },
     {
       "id": 64,
+      "name": "HOOKS_STOP_STEER_NEUTRAL",
       "status": "applied"
     },
     {
       "id": 65,
+      "name": "HOOKS_PRESTEP_REJECT_NEUTRAL",
       "status": "applied"
     }
   ]

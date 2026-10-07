@@ -4,7 +4,9 @@
 
 dev 在原分支历史上维护固定版本的 purge 集成、制品构建和脱敏验收。推送只到 origin/dev；upstream 只读取固定 tag。packages、apps、vendor、native 必须与 scripts/purge/lock.json 选定的官方提交一致。禁止恢复私有 request/injections 核心实现或自有 creative 业务提示。
 
-purge 原样提供业务内容与 UI，仅有启动行为适配：autoApplyOnStart=false 时跳过启动、延迟自愈、客户端和桌面清理写入；autoUpdateOnStart=false 禁止自动更新。手动应用/更新属于独立运行时修改，不能据此继续声称制品未变化。所有规则及缺失/不适用状态由锁文件逐条固定，升级必须审查变更后重新验收。
+purge 原样提供业务内容与 UI，集成适配限于启动写入控制与官方版本的补丁匹配。autoApplyOnStart=false 时跳过启动、延迟自愈、客户端和桌面清理写入；autoUpdateOnStart=false 禁止自动更新。1.1.60 的 REWIND_DROP_SENT_ON_APPEND 规则按官方 0.2.1 的条件清空写法同时适配匹配串和替换串，保留上游回退行为。手动应用/更新属于独立运行时修改，不能据此继续声称制品未变化。所有规则及缺失/不适用状态由锁文件逐条固定，升级必须审查变更后重新验收。
+
+1.1.60 有两条编号 74 的规则，补丁门禁同时核对编号、名称、顺序和状态，不能按编号去重。该版本的提示词框提交只保存在当前进程，重启后恢复插件内置默认；不能把保存成功视为持久化自定义提示词。旧磁盘提示词和规则集不再是默认注入来源。撤回是追加历史标记：正文和模型上下文过滤被撤回轮次，原始事件保留；1.1.60 页面轮次导航与累计统计仍保留这些轮次编号，不能把统计数当作有效上下文轮次。
 
 ## 构建与本地验收
 
@@ -12,7 +14,7 @@ purge 原样提供业务内容与 UI，仅有启动行为适配：autoApplyOnSta
 
 purge 在系统临时目录的独立运行时应用，不能位于名字包含 deepseek-harness 的路径中；purge 的桌面识别会误判该路径。脚本先核验官方 tarball 安装字节，再检查所有补丁目标均位于隔离 runtime/home。通过后将变更覆盖回原始跨平台 tarball，而非重打包 macOS 安装后的可选依赖，以保留 Linux 原生载荷。目标机仅安装封存制品，不在目标机应用补丁。
 
-purge:build 包含单元、压缩历史、CLI/SDK 业务与 Web profile 验收。测试使用合成身份、文本和回环模型端点；模拟请求验证标准工具、purge 内容、重启恢复、客户端加载和延迟启动后无文件漂移。build:official 已通过且核心输入未变时才可使用 --skip-build。失败现场保留在输出提示的临时目录，禁止自动发布失败产物。
+purge:build 包含单元、压缩历史、CLI/SDK 业务与 Web profile 验收。测试使用合成身份、文本和回环模型端点；模拟请求验证标准工具、purge 内容、重启恢复、客户端加载和延迟启动后无文件漂移。build:official 已通过、核心输入未变且客户端构建记录的 DSH_CLIENT_COMMIT_HASH 匹配当前提交时才可使用 --skip-build；即使仅提交文档，提交戳变化后也需重新构建。失败现场保留在输出提示的临时目录，禁止自动发布失败产物。
 
 新增 MJS 需逐个 node --check，并使用现有 Prettier 格式检查及 node --test；不新增测试框架。仓库文档与门禁改动仍需 doc-sync、lint 和相应 Vitest；推送保留原有 hook。
 

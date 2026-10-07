@@ -35,7 +35,7 @@ const { DeepSeekHarness } = await import(
 );
 
 test(
-  "purge 真实 preset：模型请求可见、重启恢复、无旧注入事件",
+  "purge 标准、兼容、极简和 PTC preset：模型请求可见、重启恢复、无旧注入事件",
   { timeout: 90000 },
   async () => {
     // 夹具在独立安装树内，以正常 Node 包解析使用同一套 Cordis 与服务。
@@ -45,6 +45,10 @@ test(
     mkdirSync(home);
     initializeProfile(runtime, home, { surface: "sdk" });
     mkdirSync(workspace);
+    writeFileSync(
+      join(workspace, "AGENTS.md"),
+      "NEUTRAL_WORKSPACE_CONTEXT_1160\n",
+    );
     const requests = [];
     const server = createServer(async (req, res) => {
       let body = "";
@@ -84,6 +88,8 @@ test(
         "creative",
         "creative",
         "standard",
+        "minimal",
+        "ptc",
       ].entries()) {
         const result = join(dir, `result-${index}.json`);
         const runner = join(dir, `runner-${index}.mjs`);
@@ -143,9 +149,11 @@ export function apply(ctx){
         const harness = new DeepSeekHarness({
           dshBin: join(runtime, "node_modules/@deepseek-ai/dsh/lib/bin.js"),
           patches: [
-            join(
-              runtime,
-              "node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml",
+            ...["standard", "minimal", "ptc"].map((id) =>
+              join(
+                runtime,
+                `node_modules/@deepseek-ai/dsh-web-app/presets/${id}.patch.yml`,
+              ),
             ),
             patch,
           ],
@@ -183,6 +191,10 @@ export function apply(ctx){
             !data.events.some((event) => event.type === "request/injections"),
           );
           assert.ok(requests.at(-1).tools.length > 0, "保留标准工具能力");
+          assert.ok(
+            request.includes("NEUTRAL_WORKSPACE_CONTEXT_1160"),
+            `${preset} 应通过实际 agent-instructions 读取工作区上下文`,
+          );
           if (index === 1) assert.ok(text.includes("NEUTRAL_PROMPT_0"));
         } finally {
           await harness.close();
