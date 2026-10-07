@@ -6,4 +6,4 @@
 
 ## 当前任务
 
-`workflow/261007-tavern-release.md` - Tavern 最终归档、确定性与真实模型验收已通过；部署分支提交、Tavern Release 和人工确认待办。
+`workflow/261007-tavern-release.md` - Tavern 验收、部署分支提交与 Release 下载回读已完成；待用户人工确认后归档。
