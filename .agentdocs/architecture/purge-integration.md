@@ -2,7 +2,9 @@
 
 ## 维护范围
 
-dev 在原分支历史上维护固定版本的 purge 集成、制品构建和脱敏验收。推送只到 origin/dev；upstream 只读取固定 tag。packages、apps、vendor、native 必须与 scripts/purge/lock.json 选定的官方提交一致。禁止恢复私有 request/injections 核心实现或自有 creative 业务提示。
+purge 唯一构建下载源为 SeanZ/dsh-purge，固定提交和 SHA-256，不配置原作者地址为备用源。本地维护仓库为 /Users/bytedance/workspace/agent/dsh/dsh-purge，唯一 origin 为 git@github.com:SeanZ/dsh-purge.git。compat/dsh-015rc2-tavern 从 1.1.15 修正版 5d6cf35 创建，用于后续旧宿主 PE 适配；主部署线仍固定 1.1.60 / af13e8c。fork 下载的 af13e8c 归档与原制品源摘要相同，源码来源切换不改变版本或载荷。
+
+deploy/purge 在原分支历史上维护固定版本的 purge 集成、制品构建和脱敏验收。推送只到 origin/deploy/purge；upstream 只读取固定 tag。packages、apps、vendor、native 必须与 scripts/purge/lock.json 选定的官方提交一致。禁止恢复私有 request/injections 核心实现或自有 creative 业务提示。
 
 purge 原样提供业务内容与 UI，集成适配限于启动写入控制与官方版本的补丁匹配。autoApplyOnStart=false 时跳过启动、延迟自愈、客户端和桌面清理写入；autoUpdateOnStart=false 禁止自动更新。1.1.60 的 REWIND_DROP_SENT_ON_APPEND 规则按官方 0.2.1 的条件清空写法同时适配匹配串和替换串，保留上游回退行为。手动应用/更新属于独立运行时修改，不能据此继续声称制品未变化。所有规则及缺失/不适用状态由锁文件逐条固定，升级必须审查变更后重新验收。
 
@@ -18,11 +20,17 @@ purge:build 包含单元、压缩历史、CLI/SDK 业务与 Web profile 验收�
 
 新增 MJS 需逐个 node --check，并使用现有 Prettier 格式检查及 node --test；不新增测试框架。仓库文档与门禁改动仍需 doc-sync、lint 和相应 Vitest；推送保留原有 hook。
 
+## 发布与验收范围
+
+2026-10-07 用户确认两条部署线改为本地脱敏验收、封包并通过 GitHub Release 交付。当前主线延续已验收的 1.1.60 字节，源码 URL 切换到 SeanZ fork 后摘要相同。固定发布标签以 deploy-purge- 开头，完整封包、SHA256SUMS、manifest.json 和 validation.json 必须一起发布，发布后重新下载比较摘要。新的分支文档提交不意味着旧包由该提交重新构建，manifest 保留原构建提交。Tavern 线由 deploy/tavern-015rc2 独立维护，使用 deploy-tavern- 标签。
+
+本次交付不要求操作 my43 或远端 canary；本地未运行的 Linux/真实供应商场景在回执中明确标注。以下目标机流程保留给以后明确授权的生产部署使用，不作为本次本地交付门槛。
+
 ## 上传与目标机验收
 
 构建输出包含 manifest.json 和与其摘要绑定的 validation.json。执行 node scripts/purge/pack.mjs --dist dist/purge-release --out <新归档路径>，得到归档和 SHA-256 回执。上传后先核验整个归档摘要，再在新的 canary 目录解包。目标机执行 node scripts/purge/install.mjs --dist <解包目录>/dist --runtime <新运行时>，以及 node scripts/purge/test.mjs --dist <解包目录>/dist --runtime <新运行时>。
 
-node scripts/purge/profile.mjs --runtime <新运行时> --home <新home> --previous <旧web-profile> 只读旧配置并生成新 profile，移除三个旧扩展，保留其它 bundle 与用户设置；已有目标 profile 拒绝覆盖。凭据只能复制至权限受限的隔离 home，不进脚本参数、日志或提交。真实请求、旧会话副本、平台原生依赖和实际 HTTP 入口仍须在 my43 验收；脱敏本地测试不能替代它们。
+node scripts/purge/profile.mjs --runtime <新运行时> --home <新home> --previous <旧web-profile> 只读旧配置并生成新 profile，移除三个旧扩展，保留其它 bundle 与用户设置；已有目标 profile 拒绝覆盖。凭据只能复制至权限受限的隔离 home，不进脚本参数、日志或提交。未来实际部署时，真实请求、旧会话副本、平台原生依赖和实际 HTTP 入口须按部署范围验收；本次本地制品验收不宣称完成这些目标机检查。
 
 隔离服务绑定新的 loopback 端口，设置 DSH_HOME、DSH_BASE、DSH_SURFACE=web 和独立 DSH_AGENTS_HOME。生产 current、home、systemd 服务和入口均不随上传自动切换。正式切换须由用户明确指定目标实例；本次 zxh 切换已获授权，当前路径见下节。
 

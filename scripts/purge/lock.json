@@ -6,7 +6,7 @@
   "purge": {
     "version": "1.1.60",
     "commit": "af13e8c201b526dc3bbce949351fb46a762eb1eb",
-    "url": "https://codeload.github.com/YuJunZhiXue/dsh-purge/tar.gz/af13e8c201b526dc3bbce949351fb46a762eb1eb",
+    "url": "https://codeload.github.com/SeanZ/dsh-purge/tar.gz/af13e8c201b526dc3bbce949351fb46a762eb1eb",
     "sha256": "c178dbf7c3e7f4932934c358a75223fe55f4c42dcd1bc34aee991a2356c52f4b"
   },
   "runtimeRoots": ["@deepseek-ai/dsh-experimental-agent-team-profile"],

@@ -1,8 +1,8 @@
-# dev 的 purge 集成与版本验收
+# deploy/purge 的集成与版本验收
 
 ## 目标
 
-按用户 2026-10-07 指令，dev 保留 purge 集成、构建与脱敏测试补丁。新版先在本地完成构建和测试，再交付同一制品到 my43 隔离验收。推送目的地为 origin/dev（用户 fork），upstream 仅用于读取官方版本。现有本地未提交代理文档保留。
+按用户 2026-10-07 最新指令，deploy/purge（原 dev）保留 purge 集成、构建与脱敏测试补丁，与 deploy/tavern-015rc2 分开维护。当前交付在本地完成验收和封包，发布到用户 fork 的 GitHub Release；本轮不操作 my43。推送目的地为 origin/deploy/purge，purge 唯一下载源为 SeanZ/dsh-purge。历史生产验收记录保留如下，不能将其视为新制品自动通过验收。现有本地未提交代理文档保留。
 
 ## 设计
 

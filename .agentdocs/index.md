@@ -1,6 +1,6 @@
 ## 架构与运行约束
 
-`architecture/purge-integration.md` - 当前 dev 的固定版本集成、本地构建、脱敏验收、封存制品与 my43 隔离运行流程。
+`architecture/purge-integration.md` - 当前 deploy/purge 的固定版本集成、本地构建、脱敏验收、封存制品与 my43 隔离运行流程。
 
 `architecture/legacy-request-injections.md` - 已退役的私有持久化声明和原始类型快照；离线迁移旧日志时读取。
 
@@ -8,7 +8,7 @@
 
 ## 当前任务文档
 
-`workflow/261007-purge-integration.md` - dev 移除旧核心注入，维护 purge 固定版本集成、本地构建与脱敏回归，并交付 my43 隔离验收。
+`workflow/261007-purge-integration.md` - deploy/purge 移除旧核心注入，维护 purge 固定版本集成、本地构建与脱敏回归，并交付 my43 隔离验收。
 
 `workflow/261003-my43-021-alpha1-assessment.md` - 021alpha1补丁适配、隔离验收、制品部署与回退。
 
@@ -40,6 +40,8 @@
 
 ## 长期分支约定
 
-`dev` 是自用补丁与 my43 制品的长期维护分支，推送到 `SeanZ/deepseek-harness` 的同名分支；原 `feature/my43-alpha-request-injections` 保留为本次迁移的阶段性记录。`dev` 当前只维护 purge 集成、构建与测试验收补丁；私有核心注入实现已退役，现行流程见 purge 集成文档。
+`master` 保持官方同步用途；`deploy/purge`（原 `dev`）维护新版宿主部署；`deploy/tavern-015rc2` 从官方 0.1.5-rc.2 创建，维护固定旧宿主与 Tavern。两个部署分支分别使用 `deploy-purge-*` 和 `deploy-tavern-*` 发布标签，下载固定标签，不依赖仓库级 latest。
 
-本地 `upstream` 指向官方仓库 `https://github.com/deepseek-ai/deepseek-harness.git`。当前基线为官方 `dsh-v0.2.1-alpha.1` / `5badb15009`（升级固定按标签，不默认合并 master 可能包含的额外提交）。后续跟进时先 fetch 并明确选定上游 tag 或提交，再合并到 dev，保留已推送的补丁历史；不直接用上游覆盖 dev。冲突解决后按变更范围运行核心、插件、历史迁移与构建检查，制品部署另做隔离验收和备份。分支同步本身不代表自动升级生产服务。
+`deploy/purge` 是自用补丁与 my43 制品的长期维护分支，推送到 `SeanZ/deepseek-harness` 的同名分支；原 `feature/my43-alpha-request-injections` 保留为本次迁移的阶段性记录。`deploy/purge` 当前只维护 purge 集成、构建与测试验收补丁；私有核心注入实现已退役，现行流程见 purge 集成文档。
+
+本地 `upstream` 指向官方仓库 `https://github.com/deepseek-ai/deepseek-harness.git`。当前基线为官方 `dsh-v0.2.1-alpha.1` / `5badb15009`（升级固定按标签，不默认合并 master 可能包含的额外提交）。后续跟进时先 fetch 并明确选定上游 tag 或提交，再合并到 deploy/purge，保留已推送的补丁历史；不直接用上游覆盖 deploy/purge。冲突解决后按变更范围运行核心、插件、历史迁移与构建检查，制品部署另做隔离验收和备份。分支同步本身不代表自动升级生产服务。
