@@ -1,0 +1,18 @@
+# 只允许部署时变更；禁用插件启动时更新与改写宿主。
+- id: dsh-purge
+  config:
+    enabled: true
+    autoApplyOnStart: false
+    autoUpdateOnStart: false
+    autoRevertOnMissing: false
+    stripMnemon: false
+    promptScope: root
+    rewindEnabled: false
+    allowHostMutation: false
+- id: webserver
+  config:
+    host: 127.0.0.1
+    port: !!js ctx.webStartup.port ?? 3081
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024

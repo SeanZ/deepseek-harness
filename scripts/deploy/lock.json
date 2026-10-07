@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "dsh": {
+    "version": "0.1.5-rc.2",
+    "commit": "fb2c4b9e698e30edb738bca4cf0618587db7d203",
+    "origin": "source-build"
+  },
+  "tavern": {
+    "version": "2.5.0",
+    "commit": "8480f7deb9b645d396bfbd75092810a8b8ad70b2",
+    "url": "https://codeload.github.com/flizzywine/dsh-tavern/tar.gz/8480f7deb9b645d396bfbd75092810a8b8ad70b2",
+    "sha256": "e1851071b0184d5fbbe768a39efcd7d03446dbfd2c734ceb59bf70a494f088f3"
+  },
+  "purge": {
+    "version": "1.1.15-seanz.1",
+    "commit": "a679f10a3409a29c30a0aa08a8757eb38ebf6c55",
+    "url": "https://codeload.github.com/SeanZ/dsh-purge/tar.gz/a679f10a3409a29c30a0aa08a8757eb38ebf6c55",
+    "sha256": "e8be70658f68fb905ea35cac92f841cb94cb5a121bde8c7da4a8ced80af61044",
+    "enabled": true,
+    "deploymentPatches": [40]
+  },
+  "hostFiles": {
+    "@deepseek-ai/dsh-session/surface": "aad7aaabe6cd9b39ae4cc3b50a2873c9b5d73b69d929051f31b18ecc13647c72",
+    "@deepseek-ai/dsh-session": "05e94f57d96e7979670a5b51024c8591572eb0051ce793613dbdec35cf2c47bf",
+    "@deepseek-ai/dsh-session-persistence": "0dc2a1634e4b6ebb558aac214009da3dc00f54f315762a56a1841d12baf770d4",
+    "@deepseek-ai/dsh-session-format-v2-to-v3": "2d35e1e0ed497af569d5735fc590187de1568489cfe60d070b5f61330cd5a338",
+    "@deepseek-ai/dsh-session-format-catalog": "bf4bde9e6563d7793f820c4a1b3141f6527283dd6c58f16bf43a67bc557cc48c",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "7d0640c9fc4be6c703b77605fdee6af519c542fae28a6cd4489353309812f062",
+    "@deepseek-ai/dsh-session-query": "c2a3954a0060942b179a92111cce556f27b8d659a4d815bb0e9defadbdb874da",
+    "@deepseek-ai/dsh-api-session-controller/client": "ff33d1f85a0b2f14568fcb555d5f52d2ba5f57f2e0ecfa5d7885ba83e7ff6069"
+  },
+  "vendor": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/cosmokit": "1.8.3",
+    "@deepseek-ai/cordis-plugin-group": "1.0.2",
+    "@deepseek-ai/cordis-plugin-hmr": "1.0.17",
+    "@deepseek-ai/cordis-plugin-include": "1.0.7",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.3",
+    "@deepseek-ai/cordis-plugin-logger-console": "1.0.2",
+    "@deepseek-ai/schemastery": "3.18.2",
+    "@deepseek-ai/cordis-plugin-timer": "1.1.4"
+  }
+}
