@@ -20,7 +20,8 @@ purge 会修改运行时文件和权限默认值。补丁应用必须限制在�
 - [x] 提交并推送 origin/dev，回读远端提交。
 - [x] 上传同一制品到 my43；独立 home/port 验证新会话、旧历史、配置、真实模型和重启。
 - [x] 更新长期维护约束。
-- [ ] 浏览器首次使用须知等待用户确认；设置页和人工验收未完成，确认无其他改动后归档。
+- [x] 用户确认首次使用须知后完成浏览器设置页验收，回读配置与运行时文件。
+- [ ] 等待用户最终人工验收，确认无其他改动后归档。
 
 ## 验收数据
 
@@ -40,4 +41,6 @@ purge 会修改运行时文件和权限默认值。补丁应用必须限制在�
 
 真实历史副本 105 个会话中 100 个可恢复、5 个既有不可读；转换 10 个会话的 13 条旧注入事件，168 个源文件哈希未变。新旧可读会话逐条比较消息、事件、继承切点，未扩大失败。DeepSeek standard 和 GLM creative 各完成 6 次只读工具调用，均正常结束、仅 initial 请求头与一个系统提示、旧注入事件为 0。重启后配置、11 个模型、Agent Team、purge、历史兼容别名和历史列表再次通过 HTTP 回读，生产配置摘要未变。
 
-purge 相对原实例改变 bash-sandbox.timeoutMs：60000 → 600000、subagent.maxDepth：1 → 10；其它同名设置逐字段保持，unrestricted namespace 随旧插件退出。浏览器成功加载应用和 purge 首次须知；涉及禁止商业转售与免责的确认已询问用户，未代为接受，设置页人工验收仍待完成。
+purge 相对原实例改变 bash-sandbox.timeoutMs：60000 → 600000、subagent.maxDepth：1 → 10；其它同名设置逐字段保持，unrestricted namespace 随旧插件退出。用户确认首次须知后，浏览器已验证 purge 面板、通用设置、内置插件和 Agent 预设页面，standard 为默认、creative 显示为历史兼容入口；浏览器无警告或错误。面板仍为固定 1.1.59，未操作更新、应用、还原或卸载。
+
+浏览器验收产生的唯一额外设置变化为 ui-settings-general.welcomeNoticeVersion，已通过带 expectedRevision 的 settings/replace 恢复隔离实例原值；随后完整设置回读通过。页面操作后再次核对 291 个包、6414 个文件，均与封存制品相同。截图保留于忽略目录 .artifacts/purge-transition/remote-evidence/settings-presets.jpg。隔离入口与转发保留供用户人工验收，生产未切换。
