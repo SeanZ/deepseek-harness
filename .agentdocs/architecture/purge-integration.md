@@ -48,12 +48,14 @@ node scripts/purge/profile.mjs --runtime <新运行时> --home <新home> --previ
 
 ## zxh 正式部署与回退
 
-2026-10-09 升级前，zxh.tackd.net 的 dsh.service 使用 /home/ubuntu/dsh-releases/20261007-release-purge-1，current 与 /usr/local/bin/dsh 指向该版本，生产 home 仍为 /home/ubuntu/.dsh、agents 为 /home/ubuntu/.agents，监听 127.0.0.1:3080。Caddy、Authelia、trusted-host 和启动后 bootstrap 机制保持原配置。正式 release 安装本地验收后的同一封存制品，不复制隔离测试会话。
+zxh.tackd.net 的 dsh.service 使用 /home/ubuntu/dsh-releases/20261009-alpha2-purge-1166，current 与 /usr/local/bin/dsh 指向该版本；DSH 0.2.1-alpha.2、purge 1.1.66，固定 Release 为 deploy-purge-20261009.1。生产 home 为 /home/ubuntu/.dsh，agents 为 /home/ubuntu/.agents，监听 127.0.0.1:3080；Caddy、Authelia、trusted-host 和启动后 bootstrap 沿用原配置。该包的构建提交见 Release manifest，后续文档提交不改变制品。
 
-切换前须再次确认无运行中会话、读取最新有效配置和默认模型。停服后复制非历史状态到新 home，并用上一正式运行时读取最新历史，导出及比较通过后才同时切换 home 和 current。105 个原会话均保留，100 个可恢复、5 个既有失败；本次不修复既有损坏。旧原件完整保留在 /home/ubuntu/dsh-backups/20261007-pre-purge-1160/original-home；对应旧运行时为 /home/ubuntu/dsh-releases/20261006-source-r2。
+升级先对生产副本完成 Linux 27 项验收、真实默认模型与两次启动，再确认主实例无活动会话，停服一致备份 home、agents 和服务配置，更新 profile 的固定插件链接及 creative 兼容别名，原子切换 current。旧版 /home/ubuntu/dsh-releases/20261007-release-purge-1 和完整备份 /home/ubuntu/dsh-backups/20261009-alpha2-purge-1166 保留。脚本和私有回执位于 /home/ubuntu/dsh-maintenance/20261009-alpha2，封存安装源位于 /home/ubuntu/dsh-artifacts/20261009-alpha2/purge；隔离副本不会覆盖生产数据。
 
-回退必须先停服务、保全升级后新 home，再恢复 original-home 和对应旧 release；不能只回切 current，也不能覆盖升级后的新增聊天。本次维护脚本与回执位于 /home/ubuntu/dsh-maintenance/20261007-purge-production。切换脚本初次检查失败时自动恢复旧状态，后续已产生正式新数据时须先评估数据差异再回退。
+全量历史使用两个版本的真实持久化读取器在副本中比较，原有 110 会话、105 可读和 5 既有不可读均保留，可读事件与聊天消息摘要一致。本次不重复旧私有格式迁移，也不修复既有损坏。最早的私有格式原件仍保留在 /home/ubuntu/dsh-backups/20261007-pre-purge-1160/original-home；只用于历史取证，不能直接覆盖当前生产。
 
-DSH 登录 Cookie 的名称和签名 audience 绑定 Host authority。验证 zxh 的可信 Origin 时必须用同一域名 Host 兑换 Cookie；不能把 127.0.0.1 的 Cookie 混用于 zxh。Node fetch 的 Host 处理也可能使代理腿测试失真，低层 HTTP 测试应显式保留 Host。服务端域名校验和匿名 Authelia 跳转均不能代替本人登录后的公网浏览器验收。
+alpha.2 的设置比较只规范化两类已核实的官方默认变化：DeepSeek Flash 内置显示名修正，以及缺失的字体默认项补齐。自定义字体、模型显示名及其它设置均严格比较。默认模型保留 zai-coding-cn / glm-5.3 / high。补丁状态为 65/67、pending 0；计数不能替代固定规则状态及运行时文件审计。
 
-清理已移除 20261003-021alpha1、20261006-101516-pre-source-r2 备份和旧验收 canary，历史文档中的这些路径不再可回退。保留本节当前及上一版 release、最新原始 home、两版正式安装包与 dist、维护回执及 npm 缓存。后续清理必须重新核对现场引用，不能重放此次清单。验收后的用户新会话与模型选择作为新现场保留，不能用旧验收基线覆盖。
+失败回退必须先停服并保全升级后的 home/agents，再恢复该次一致备份及配套旧运行时。切换脚本失败自动回退；已产生正式新数据时先评估差异，不能只回切 current 或覆盖新增聊天。历史清理文档不是可直接重放的清单，后续清理须重新核对运行引用并另获授权。
+
+DSH 登录 Cookie 的名称和签名 audience 绑定 Host authority。可信 Origin 检查须用同一域名 Host 兑换 Cookie，不能混用 127.0.0.1 Cookie；低层 HTTP 测试须显式保留 Host。服务端域名校验和匿名 Authelia 跳转均不能代替本人登录后的公网浏览器验收。当前自动浏览器访问被 ERR_BLOCKED_BY_CLIENT 阻止，公网登录后页面仍待用户验收。
