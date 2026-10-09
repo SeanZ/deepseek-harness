@@ -5,7 +5,9 @@ import { adaptPurgeEntry, adaptPurgeCore } from "../adapter.mjs";
 test("关闭自动应用在磁盘操作前返回，并跳过客户端与桌面启动写入", () => {
   const input =
     'async function settleInstalledPatches(config, ctx, life) {\n  touchDisk();\n}\nconst written = core.patchWatchedClientBundlesSync();\nconst scrubbed = core.sanitizeDesktopCommandRuntimes();\n    if (scrubbed.length) log(cfg, "desktop runtime scrub on load:", JSON.stringify(scrubbed));';
-  const output = adaptPurgeEntry(input);
+  const output = adaptPurgeEntry(
+    input + "\nconst restored = core.restoreMissingOriginalsAllHosts();",
+  );
   const body = output.slice(output.indexOf("{\n") + 2, output.indexOf("\n}\n"));
   let writes = 0;
   const settle = new Function("config", "touchDisk", body);
@@ -16,6 +18,21 @@ test("关闭自动应用在磁盘操作前返回，并跳过客户端与桌面�
   assert.equal(writes, 0);
   settle({ autoApplyOnStart: true }, () => writes++);
   assert.equal(writes, 1);
+  const restore = new Function(
+    "cfg",
+    "core",
+    output.slice(output.lastIndexOf("const restored")) + " return restored;",
+  );
+  const core = {
+    restoreMissingOriginalsAllHosts: () => {
+      writes++;
+      return ["restored"];
+    },
+  };
+  assert.deepEqual(restore({ autoApplyOnStart: false }, core), []);
+  assert.equal(writes, 1);
+  assert.deepEqual(restore({ autoApplyOnStart: true }, core), ["restored"]);
+  assert.equal(writes, 2);
   assert.match(
     output,
     /cfg\.autoApplyOnStart \? core\.patchWatchedClientBundlesSync/,

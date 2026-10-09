@@ -13,6 +13,7 @@ import {
 import { resolve, join } from "node:path";
 import { lock, digest, run, readJson } from "./common.mjs";
 import { adaptPurgeEntry, adaptPurgeCore } from "./adapter.mjs";
+import { adaptAlpha2Core } from "./alpha2.mjs";
 
 /** 固定归档经摘要与成员检查后解包，不接受浮动分支或归档中的链接。 */
 export async function preparePurge(cache) {
@@ -67,7 +68,10 @@ export async function preparePurge(cache) {
     writeFileSync(entry, adaptPurgeEntry(readFileSync(entry, "utf8")));
     run(process.execPath, ["--check", entry]);
     const core = join(source, "lib/core.js");
-    writeFileSync(core, adaptPurgeCore(readFileSync(core, "utf8")));
+    writeFileSync(
+      core,
+      adaptAlpha2Core(adaptPurgeCore(readFileSync(core, "utf8"))),
+    );
     run(process.execPath, ["--check", core]);
     renameSync(source, directory);
     return directory;

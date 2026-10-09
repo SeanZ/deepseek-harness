@@ -4,6 +4,10 @@ import assert from "node:assert/strict";
 export function adaptPurgeEntry(source) {
   const replacements = [
     [
+      "const restored = core.restoreMissingOriginalsAllHosts();",
+      "const restored = cfg.autoApplyOnStart ? core.restoreMissingOriginalsAllHosts() : [];",
+    ],
+    [
       "async function settleInstalledPatches(config, ctx, life) {\n",
       'async function settleInstalledPatches(config, ctx, life) {\n  if (config.autoApplyOnStart === false) return "skip:auto-apply-disabled";\n',
     ],
@@ -28,7 +32,7 @@ export function adaptPurgeEntry(source) {
   return output;
 }
 
-/** 1.1.60 的回退规则适配官方 0.2.1 的条件清空写法，保留补丁原本行为。 */
+/** purge 回退规则适配官方 0.2.1 的条件清空写法，保留补丁原本行为。 */
 export function adaptPurgeCore(source) {
   const start = source.indexOf('name: "REWIND_DROP_SENT_ON_APPEND"');
   const end = source.indexOf("\n  {\n    id: 75,", start);

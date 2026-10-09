@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "upstreamVersion": "0.2.1-alpha.1",
-  "upstreamTag": "dsh-v0.2.1-alpha.1",
-  "upstreamCommit": "5badb15009ae1756c3afe0ae0cef1faafc290ccc",
+  "upstreamVersion": "0.2.1-alpha.2",
+  "upstreamTag": "dsh-v0.2.1-alpha.2",
+  "upstreamCommit": "d743267388641bc76f17c45ce8b4c231aed1d32c",
   "purge": {
-    "version": "1.1.60",
-    "commit": "af13e8c201b526dc3bbce949351fb46a762eb1eb",
-    "url": "https://codeload.github.com/SeanZ/dsh-purge/tar.gz/af13e8c201b526dc3bbce949351fb46a762eb1eb",
-    "sha256": "c178dbf7c3e7f4932934c358a75223fe55f4c42dcd1bc34aee991a2356c52f4b"
+    "version": "1.1.66",
+    "commit": "09bac57f2cfbf22dbc2e896063de161ac0e6b81d",
+    "url": "https://codeload.github.com/SeanZ/dsh-purge/tar.gz/09bac57f2cfbf22dbc2e896063de161ac0e6b81d",
+    "sha256": "2c54b9a795aa53c5a6f626d29f3b98637a34b45a72a17802ea2494f223a8d07e"
   },
   "runtimeRoots": ["@deepseek-ai/dsh-experimental-agent-team-profile"],
   "webPatchStatuses": [
@@ -37,6 +37,11 @@
       "status": "applied"
     },
     {
+      "id": 76,
+      "name": "PRESET_UNRESTRICTED_IDENTITY_STRIP",
+      "status": "missing_file"
+    },
+    {
       "id": 70,
       "name": "PRESET_SHELL_NETWORK",
       "status": "applied"
@@ -44,7 +49,7 @@
     {
       "id": 73,
       "name": "PRESET_BASH_MIRROR_LINE",
-      "status": "applied"
+      "status": "already"
     },
     {
       "id": 71,
@@ -157,6 +162,11 @@
       "status": "applied"
     },
     {
+      "id": 80,
+      "name": "MINIMAL_OFFICIAL_TOOLSET",
+      "status": "skipped"
+    },
+    {
       "id": 28,
       "name": "LIANGSHEN_PHASE1_KEEP_INJECT",
       "status": "missing_file"
@@ -174,12 +184,12 @@
     {
       "id": 30,
       "name": "HOOKS_CLAUDE_DENY_ALLOW",
-      "status": "applied"
+      "status": "missing_file"
     },
     {
       "id": 31,
       "name": "HOOKS_CODEX_DENY_ALLOW",
-      "status": "applied"
+      "status": "missing_file"
     },
     {
       "id": 33,
@@ -287,6 +297,11 @@
       "status": "applied"
     },
     {
+      "id": 81,
+      "name": "HUNG_PROMPT_EVERY_STEP",
+      "status": "applied"
+    },
+    {
       "id": 66,
       "name": "SYSTEM_PROMPT_RENDER_GUARD",
       "status": "applied"
@@ -317,7 +332,7 @@
       "status": "applied"
     },
     {
-      "id": 74,
+      "id": 77,
       "name": "REWIND_DROP_SENT_ON_APPEND",
       "status": "applied"
     },
@@ -364,12 +379,12 @@
     {
       "id": 64,
       "name": "HOOKS_STOP_STEER_NEUTRAL",
-      "status": "applied"
+      "status": "missing_file"
     },
     {
       "id": 65,
       "name": "HOOKS_PRESTEP_REJECT_NEUTRAL",
-      "status": "applied"
+      "status": "missing_file"
     }
   ]
 }
