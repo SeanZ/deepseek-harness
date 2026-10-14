@@ -32,7 +32,7 @@ alpha.3 的 JSONL 持久化后端以插件命名空间挂载，不再取 default
 
 两条部署线使用本地脱敏验收、封包和 GitHub Release 交付。固定发布标签以 deploy-purge- 开头，完整封包、SHA256SUMS、manifest.json 和 validation.json 必须一起发布，发布后重新下载比较摘要。新的分支文档提交不意味着旧包由该提交重新构建，manifest 保留原构建提交。Tavern 线由 deploy/tavern-015rc2 独立维护，使用 deploy-tavern- 标签。
 
-2026-10-09 用户明确要求主 DSH 与 purge 联合升级部署。该次任务必须完成 my43 的 Linux 原生、真实供应商、配置副本与历史兼容验收，并在一致备份后切换；Tavern 不在变更范围。仅做本地发布的后续任务不能复用这次授权升级生产。
+2026-10-15 用户明确要求主 DSH 升级发布 alpha.3 并清理 my43 冗余备份和构建。该次任务完成 Linux 原生、真实供应商、配置副本与历史兼容验收后，在一致备份下切换；purge 保持 1.1.66，Tavern 不在变更范围。后续任务不能复用这次授权升级生产。
 
 ## 上传与目标机验收
 
@@ -52,14 +52,14 @@ node scripts/purge/profile.mjs --runtime <新运行时> --home <新home> --previ
 
 ## zxh 正式部署与回退
 
-zxh.tackd.net 的 dsh.service 使用 /home/ubuntu/dsh-releases/20261009-alpha2-purge-1166，current 与 /usr/local/bin/dsh 指向该版本；DSH 0.2.1-alpha.2、purge 1.1.66，固定 Release 为 deploy-purge-20261009.1。生产 home 为 /home/ubuntu/.dsh，agents 为 /home/ubuntu/.agents，监听 127.0.0.1:3080；Caddy、Authelia、trusted-host 和启动后 bootstrap 沿用原配置。该包的构建提交见 Release manifest，后续文档提交不改变制品。
+zxh.tackd.net 的 dsh.service 使用 /home/ubuntu/dsh-releases/20261015-alpha3-purge-1166，current 与 /usr/local/bin/dsh 指向该版本；DSH 0.2.1-alpha.3、purge 1.1.66，固定 Release 为 deploy-purge-20261015.1。生产 home 为 /home/ubuntu/.dsh，agents 为 /home/ubuntu/.agents，监听 127.0.0.1:3080；Caddy、Authelia、trusted-host 和启动后 bootstrap 沿用原配置。构建提交为 0b3177deb69fd8ffec3b5976e121544f0a074449，后续文档提交不改变制品。
 
-升级先对生产副本完成 Linux 27 项验收、真实默认模型与两次启动，再确认主实例无活动会话，停服一致备份 home、agents 和服务配置，更新 profile 的固定插件链接及 creative 兼容别名，原子切换 current。旧版 /home/ubuntu/dsh-releases/20261007-release-purge-1 和完整备份 /home/ubuntu/dsh-backups/20261009-alpha2-purge-1166 保留。脚本和私有回执位于 /home/ubuntu/dsh-maintenance/20261009-alpha2，封存安装源位于 /home/ubuntu/dsh-artifacts/20261009-alpha2/purge；隔离副本不会覆盖生产数据。
+升级先对生产副本完成 Linux 29 项验收、真实默认模型与两次启动，再确认主实例无活动会话，停服一致备份 home、agents 和服务配置，更新 profile 的固定插件链接及 creative 兼容别名，原子切换 current。回退配对为旧版 /home/ubuntu/dsh-releases/20261009-alpha2-purge-1166 与完整备份 /home/ubuntu/dsh-backups/20261015-alpha3-purge-1166。脚本和私有回执位于 /home/ubuntu/dsh-maintenance/20261015-alpha3，封存安装源位于 /home/ubuntu/dsh-artifacts/20261015-alpha3/purge；隔离副本不会覆盖生产数据。
 
-全量历史使用两个版本的真实持久化读取器在副本中比较，原有 110 会话、105 可读和 5 既有不可读均保留，可读事件与聊天消息摘要一致。本次不重复旧私有格式迁移，也不修复既有损坏。最早的私有格式原件仍保留在 /home/ubuntu/dsh-backups/20261007-pre-purge-1160/original-home；只用于历史取证，不能直接覆盖当前生产。
+全量历史使用两个版本的真实持久化读取器在副本中比较，原有 122 会话、117 可读和 5 既有不可读均保留，可读事件与聊天消息摘要一致。生产新增一个验收会话后为 123 个，其中 118 可读；重启后真实模型的两次成功工具调用和完成状态仍可读取。本次不重复旧私有格式迁移，也不修复既有损坏。最早的私有格式原件仍保留在 /home/ubuntu/dsh-backups/20261007-pre-purge-1160/original-home，配套读取器 /home/ubuntu/dsh-releases/20261006-source-r2 与安装源保留；只用于历史取证，不能直接覆盖当前生产。
 
-alpha.2 的设置比较只规范化两类已核实的官方默认变化：DeepSeek Flash 内置显示名修正，以及缺失的字体默认项补齐。自定义字体、模型显示名及其它设置均严格比较。默认模型保留 zai-coding-cn / glm-5.3 / high。补丁状态为 65/67、pending 0；计数不能替代固定规则状态及运行时文件审计。
+设置比较只规范化已核实的官方默认变化。alpha.2 的 DeepSeek Flash 显示名修正与字体默认项补齐继续兼容。alpha.3 仅在旧账号 models 与完整官方 schema 默认目录逐字段一致时允许该字段退出，并补齐 modelsTimeoutMs=5000、modelsMaxAgeMs=600000、modelOverrides={}；ui-chat 仅补齐缺失的 collapseTiming=completion。自定义目录、模型覆盖、超时、字体、折叠时机及其它字段严格比较，不能整 namespace 放行。默认模型以本次现场为准：deepseek-official / deepseek-v4.1-flash-expires-on-0910 / high。补丁状态为 65/67、pending 0；计数不能替代固定规则状态及运行时文件审计。
 
 失败回退必须先停服并保全升级后的 home/agents，再恢复该次一致备份及配套旧运行时。切换脚本失败自动回退；已产生正式新数据时先评估差异，不能只回切 current 或覆盖新增聊天。历史清理文档不是可直接重放的清单，后续清理须重新核对运行引用并另获授权。
 
-DSH 登录 Cookie 的名称和签名 audience 绑定 Host authority。可信 Origin 检查须用同一域名 Host 兑换 Cookie，不能混用 127.0.0.1 Cookie；低层 HTTP 测试须显式保留 Host。服务端域名校验和匿名 Authelia 跳转均不能代替本人登录后的公网浏览器验收。当前自动浏览器访问被 ERR_BLOCKED_BY_CLIENT 阻止，公网登录后页面仍待用户验收。
+DSH 登录 Cookie 的名称和签名 audience 绑定 Host authority。可信 Origin 检查须用同一域名 Host 兑换 Cookie，不能混用 127.0.0.1 Cookie；低层 HTTP 测试须显式保留 Host。服务端域名校验和匿名 Authelia 跳转均不能代替本人登录后的公网浏览器验收。本次浏览器已显示正常 Authelia 登录表单，登录后页面仍待用户验收。
