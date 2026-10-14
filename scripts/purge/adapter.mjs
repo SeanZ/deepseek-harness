@@ -1,35 +1,17 @@
 import assert from "node:assert/strict";
 
-/** 关闭自动应用时，启动不再重写宿主；业务注入、UI 与手动操作保持 purge 原逻辑。 */
+/** 关闭自动应用时，在归档、版本戳和延迟自愈写入前返回；手动操作保持原逻辑。 */
 export function adaptPurgeEntry(source) {
-  const replacements = [
-    [
-      "const restored = core.restoreMissingOriginalsAllHosts();",
-      "const restored = cfg.autoApplyOnStart ? core.restoreMissingOriginalsAllHosts() : [];",
-    ],
-    [
-      "async function settleInstalledPatches(config, ctx, life) {\n",
-      'async function settleInstalledPatches(config, ctx, life) {\n  if (config.autoApplyOnStart === false) return "skip:auto-apply-disabled";\n',
-    ],
-    [
-      "const written = core.patchWatchedClientBundlesSync();",
-      "const written = cfg.autoApplyOnStart ? core.patchWatchedClientBundlesSync() : [];",
-    ],
-    [
-      'const scrubbed = core.sanitizeDesktopCommandRuntimes();\n    if (scrubbed.length) log(cfg, "desktop runtime scrub on load:", JSON.stringify(scrubbed));',
-      'const scrubbed = cfg.autoApplyOnStart ? core.sanitizeDesktopCommandRuntimes() : [];\n    if (scrubbed.length) log(cfg, "desktop runtime scrub on load:", JSON.stringify(scrubbed));',
-    ],
-  ];
-  let output = source;
-  for (const [from, to] of replacements) {
-    assert.equal(
-      output.split(from).length,
-      2,
-      "purge 启动入口已变更，必须重新审查适配",
-    );
-    output = output.replace(from, to);
-  }
-  return output;
+  const entry = "async function settleInstalledPatches(config, ctx, life) {\n";
+  const guard =
+    '  if (config.autoApplyOnStart === false) return "skip:auto-apply-disabled";\n';
+  assert.equal(
+    source.split(entry).length,
+    2,
+    "purge 启动入口已变更，必须重新审查适配",
+  );
+  assert.ok(!source.includes(guard), "purge 启动入口不能重复适配");
+  return source.replace(entry, entry + guard);
 }
 
 /** purge 回退规则适配官方 0.2.1 的条件清空写法，保留补丁原本行为。 */

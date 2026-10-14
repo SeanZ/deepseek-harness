@@ -14,6 +14,29 @@ function replaceOnce(source, from, to) {
   return source.replace(from, to);
 }
 
+/** 工作目录由宿主 required context 提供；不再生成依赖已退出变量的默认后缀。 */
+export function adaptAlpha3Identity(source) {
+  let output = replaceOnce(source, "  let sawSuffix = false;\n", "");
+  output = replaceOnce(output, "      sawSuffix = true;\n", "");
+  output = replaceOnce(
+    output,
+    "out.push({ ...section, text: CWD_ONLY_SUFFIX });",
+    'out.push({ ...section, text: "" });',
+  );
+  return replaceOnce(
+    output,
+    `  if (!sawSuffix) {
+    out.push({
+      name: "deployment:persona-suffix",
+      text: CWD_ONLY_SUFFIX,
+      order: 10200,
+    });
+  }
+`,
+    "",
+  );
+}
+
 /** 只修改固定规则本体，避免误改其它规则或旧会话匹配文本。 */
 function rule(source, name, transform) {
   const start = source.indexOf(`name: "${name}"`);

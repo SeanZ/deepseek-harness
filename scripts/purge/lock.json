@@ -4,10 +4,10 @@
   "upstreamTag": "dsh-v0.2.1-alpha.3",
   "upstreamCommit": "2fbf4359b82fb94c03dcce0b831660d87f12ea5c",
   "purge": {
-    "version": "1.1.66",
-    "commit": "09bac57f2cfbf22dbc2e896063de161ac0e6b81d",
-    "url": "https://codeload.github.com/SeanZ/dsh-purge/tar.gz/09bac57f2cfbf22dbc2e896063de161ac0e6b81d",
-    "sha256": "2c54b9a795aa53c5a6f626d29f3b98637a34b45a72a17802ea2494f223a8d07e"
+    "version": "1.1.71",
+    "commit": "5e757260a0be055892b48ec520d451cc82e1c191",
+    "url": "https://codeload.github.com/SeanZ/dsh-purge/tar.gz/5e757260a0be055892b48ec520d451cc82e1c191",
+    "sha256": "7d6c2c66a4ef564342d64ad1967408b077e36f5dbf4f456e126796d923554515"
   },
   "runtimeRoots": ["@deepseek-ai/dsh-experimental-agent-team-profile"],
   "webPatchStatuses": [
@@ -133,8 +133,8 @@
     },
     {
       "id": 21,
-      "name": "BASH_TIMEOUT_RAISED",
-      "status": "applied"
+      "name": "BASH_TIMEOUT_RESTORE",
+      "status": "already"
     },
     {
       "id": 22,
@@ -297,14 +297,19 @@
       "status": "applied"
     },
     {
-      "id": 81,
-      "name": "HUNG_PROMPT_EVERY_STEP",
-      "status": "applied"
-    },
-    {
       "id": 66,
       "name": "SYSTEM_PROMPT_RENDER_GUARD",
       "status": "applied"
+    },
+    {
+      "id": 83,
+      "name": "DESKTOP_HOST_CLOSE_NO_FATAL",
+      "status": "na"
+    },
+    {
+      "id": 84,
+      "name": "DESKTOP_HOST_CLOSE_CODE0_NO_FAIL",
+      "status": "na"
     },
     {
       "id": 67,
@@ -385,6 +390,31 @@
       "id": 65,
       "name": "HOOKS_PRESTEP_REJECT_NEUTRAL",
       "status": "missing_file"
+    },
+    {
+      "id": 82,
+      "name": "DESKTOP_SHELL_PROFILE_FALLBACK",
+      "status": "na"
+    },
+    {
+      "id": 85,
+      "name": "SESSION_PROMPT_ALWAYS_FOLLOWUP",
+      "status": "applied"
+    },
+    {
+      "id": 86,
+      "name": "SESSION_STEER_ALWAYS_FOLLOWUP",
+      "status": "applied"
+    },
+    {
+      "id": 87,
+      "name": "HUNG_PROMPT_LF_NEEDLE",
+      "status": "applied"
+    },
+    {
+      "id": 88,
+      "name": "HUNG_PROMPT_STRICT_NEEDLE",
+      "status": "applied"
     }
   ]
 }

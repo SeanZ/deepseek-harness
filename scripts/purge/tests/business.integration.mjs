@@ -22,10 +22,10 @@ const installed = (name) => join(runtime, "node_modules", name, "lib/index.js");
 const { defaultOverrideText } = await import(
   pathToFileURL(join(runtime, "node_modules/dsh-purge/lib/core.js"))
 );
-const { modePromptText } = await import(
+const { modePromptText, peelChatmlEnvelope } = await import(
   pathToFileURL(join(runtime, "node_modules/dsh-purge/lib/identity.js"))
 );
-const marker = modePromptText(defaultOverrideText(), false)
+const marker = peelChatmlEnvelope(modePromptText(defaultOverrideText(), false))
   .trim()
   .split(/\\r\\n|\r?\n/)
   .find((line) => line.trim());
@@ -107,9 +107,11 @@ export function apply(ctx){
   async function execute(){
     const options={agentOptions:{provider:'deepseek-official',model:'deepseek-v4-flash'},setup:async agentCtx=>{await ctx.agentPresets.mount(agentCtx,${JSON.stringify(preset)});}};
     const handle=await ctx.agents.${index !== 1 ? "create" : "resume"}({...options,${index !== 1 ? "sessionId:" + JSON.stringify("business-session-" + index) + ",meta:{cwd:" + JSON.stringify(workspace) + "}" : "resumeSessionId:'business-session-0'"}});
-    const done=new Promise(resolve=>{const off=ctx.on('agent/status',({agent,status})=>{if(agent===handle.agent&&status==='idle'){off();resolve();}});});
-    handle.agent.send(createUserMessage({content:[{type:'text',text:'NEUTRAL_PROMPT_${index}'}],source:{kind:'user'}}),'next-turn',true);
-    await done;
+    for (let turn = 0; turn < ${index === 0 ? 2 : 1}; turn++) {
+      const done=new Promise(resolve=>{const off=ctx.on('agent/status',({agent,status})=>{if(agent===handle.agent&&status==='idle'){off();resolve();}});});
+      handle.agent.send(createUserMessage({content:[{type:'text',text:'NEUTRAL_PROMPT_${index}_'+turn}],source:{kind:'user'}}),'next-turn',true);
+      await done;
+    }
     writeFileSync(${JSON.stringify(result)},JSON.stringify({events:handle.agent.session.snapshotEvents(),preset:ctx.agentPresets.composedPreset(handle.agent.ctx)}));
     await handle.dispose();
   }
@@ -180,7 +182,30 @@ export function apply(ctx){
           const data = JSON.parse(readFileSync(result, "utf8"));
           assert.equal(data.error, undefined, data.stack);
           assert.equal(data.preset, preset);
-          assert.equal(requests.length, index + 1);
+          assert.equal(
+            requests.length,
+            index + 2,
+            JSON.stringify(
+              data.events.filter(
+                (event) =>
+                  event.type === "turn/end" || event.type === "step/end",
+              ),
+            ),
+          );
+          if (index === 0) {
+            assert.equal(
+              data.events.filter((event) => event.type === "turn/end").length,
+              2,
+            );
+            for (const request of requests) {
+              assert.ok(
+                JSON.stringify(request).includes(
+                  JSON.stringify(marker).slice(1, -1),
+                ),
+                "同一进程后续轮次仍保留 purge 内容",
+              );
+            }
+          }
           const text = JSON.stringify(requests.at(-1).messages);
           const request = JSON.stringify(requests.at(-1));
           assert.ok(

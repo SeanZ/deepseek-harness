@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adaptAlpha3Core, prohibition, briefIdentity } from "../alpha3.mjs";
+import {
+  adaptAlpha3Core,
+  adaptAlpha3Identity,
+  prohibition,
+  briefIdentity,
+} from "../alpha3.mjs";
 
 const fixture = `export const files = {"web-app-lib": firstExisting([])};
 export const PATCHES = [
@@ -19,6 +24,25 @@ export const PATCHES = [
     ], markers: [],
   },
 ];`;
+
+test("alpha.3 默认后缀适配拒绝未知来源与重复适配", () => {
+  const source = `  let sawSuffix = false;
+      sawSuffix = true;
+out.push({ ...section, text: CWD_ONLY_SUFFIX });
+  if (!sawSuffix) {
+    out.push({
+      name: "deployment:persona-suffix",
+      text: CWD_ONLY_SUFFIX,
+      order: 10200,
+    });
+  }
+`;
+  const adapted = adaptAlpha3Identity(source);
+  assert.ok(!adapted.includes("CWD_ONLY_SUFFIX"));
+  assert.ok(adapted.includes('out.push({ ...section, text: "" });'));
+  assert.throws(() => adaptAlpha3Identity(adapted), /锚点/);
+  assert.throws(() => adaptAlpha3Identity("unknown"), /锚点/);
+});
 
 test("alpha.3 网页规则移动到新目标，仅替换当前模板串，保留旧历史匹配文本", async () => {
   const output = adaptAlpha3Core(fixture);

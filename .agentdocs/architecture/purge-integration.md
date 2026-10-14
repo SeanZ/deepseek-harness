@@ -2,19 +2,21 @@
 
 ## 维护范围
 
-purge 唯一构建下载源为 SeanZ/dsh-purge，固定提交和 SHA-256，不配置原作者地址为备用源。主部署线固定 1.1.66 / 09bac57f2cfbf22dbc2e896063de161ac0e6b81d，归档摘要见 scripts/purge/lock.json。fork master 与 v1.1.66 标签已经回读一致。旧宿主的 compat/dsh-015rc2-tavern 继续保留，不随主线升级。
+purge 唯一构建下载源为 SeanZ/dsh-purge，固定提交和 SHA-256，不配置原作者地址为备用源。主部署线构建固定 1.1.71 / 5e757260a0be055892b48ec520d451cc82e1c191，归档摘要见 scripts/purge/lock.json。归档通过 SeanZ fork 的完整提交地址下载并核验摘要，不依赖 fork 是否同步版本标签。旧宿主的 compat/dsh-015rc2-tavern 继续保留，不随主线升级。
 
 deploy/purge 在原分支历史上维护固定版本的 purge 集成、制品构建和脱敏验收。推送只到 origin/deploy/purge；upstream 只读取固定 tag。当前官方基线为 dsh-v0.2.1-alpha.3，packages、apps、vendor、native 必须与 scripts/purge/lock.json 选定的官方提交一致。禁止恢复私有 request/injections 核心实现或自有 creative 业务提示。
 
-purge 原样提供业务内容与 UI，集成适配限于启动写入控制与官方版本的补丁匹配。autoApplyOnStart=false 时跳过启动、延迟自愈、客户端、备份恢复和桌面清理写入；autoUpdateOnStart=false 禁止自动更新。封存部署从 ALL_PATCHES 排除 OVERLAY_RESTORE_FROM_BAK：该规则在配置加载前恢复宿主文件，无法受插件启动开关控制，缺失 overlay 必须按官方行为报错。手动应用/更新仍属于独立运行时修改，不能据此继续声称制品未变化。
+purge 原样提供业务内容与 UI，集成适配限于启动写入控制与官方版本的补丁匹配。1.1.71 已移除启动时的宿主恢复、客户端和桌面清理写入；autoApplyOnStart=false 时集成适配在归档记忆、版本戳和延迟自愈前返回；autoUpdateOnStart=false 禁止自动更新。封存部署从 ALL_PATCHES 排除 OVERLAY_RESTORE_FROM_BAK：该规则在配置加载前恢复宿主文件，无法受插件启动开关控制，缺失 overlay 必须按官方行为报错。手动应用/更新仍属于独立运行时修改，不能据此继续声称制品未变化。
 
 REWIND_DROP_SENT_ON_APPEND 同时适配官方条件清空的匹配串和替换串，保留 purge 的回退行为。COMPLETE_PROMPT_KEEP_INJECT 增加 alpha.2 的 required context 匹配，在保留 purge 和工作区说明的同时，保留官方对必需运行上下文的筛选。真实 SystemPrompt、CLI/SDK 和回退持久化测试覆盖这些语义。
 
 alpha.3 把 Web 提示移到 harness-dev-context。规则 32 同时处理 web-app 的 URL 描述和新模块的当前提示，规则 53 只处理新模块当前模板串；旧日志识别使用的 LEGACY_WEB_SURFACE 常量保持原字节。真实 SystemPrompt 与投影注册器验证新提示、运行时 URL 和旧会话原提示同时保留。
 
-所有规则及缺失/不适用状态由锁文件逐条固定，比较编号、名称、顺序和状态。1.1.66 的规则编号 77 替代旧版重复的 74。未安装的 Liangshen、unrestricted 与官方可选 Hooks 包按缺失记录；MINIMAL_OFFICIAL_TOOLSET 只撤销旧工具扩展，干净的官方 minimal 无需命中。不能为提升计数安装无关插件或恢复已退役的扩展。
+purge 1.1.71 新增的默认 persona-suffix 依赖 `{{cwd}}`，但 alpha.3 的工作目录已由 required `working-directory:current` 上下文提供，变量目录不再含 cwd。构建适配仅清空插件识别出的旧默认后缀并停止自动补入，保留自定义后缀及其严格插值行为；真实 SystemPrompt 与连续两轮请求验证目录上下文和后续轮次均保留。
 
-1.1.66 默认注入来自磁盘 prompt-inject.md，缺文件或仍为插件管理的旧默认时同步当前内置默认；用户自定义内容保留。设置框提交会持久化到磁盘，跨进程重启后仍生效；无需通过点击保存激活默认内容。提示词文件属于用户 home 状态，不属于封存宿主载荷。撤回仍追加历史标记并过滤被撤回轮次，原始事件保留。
+所有规则及缺失/不适用状态由锁文件逐条固定，比较编号、名称、顺序和状态。规则编号 77 表示回退清空，74 表示组装前准备。1.1.71 的 87/88 接替旧 81，覆盖完整提示词头尾检查；85/86 将 UI 输入与队列调整为 followup，公共 steer 仍按 next-step 投递。21 只迁移旧插件加长的 bash 超时，干净宿主不应强行命中；桌面专属 82/83/84 在 Web 标为不适用。未安装的 Liangshen、unrestricted 与官方可选 Hooks 包按缺失记录；MINIMAL_OFFICIAL_TOOLSET 只撤销旧工具扩展，干净的官方 minimal 无需命中。不能为提升计数安装无关插件或恢复已退役的扩展。
+
+1.1.71 默认注入来自磁盘 prompt-inject.md，缺文件或仍为插件管理的旧默认时同步当前内置默认；用户自定义内容保留。设置框提交会持久化到磁盘，跨进程重启后仍生效；无需通过点击保存激活默认内容。提示词文件属于用户 home 状态，不属于封存宿主载荷。撤回仍追加历史标记并过滤被撤回轮次，原始事件保留。
 
 ## 构建与本地验收
 

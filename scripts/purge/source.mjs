@@ -14,7 +14,7 @@ import { resolve, join } from "node:path";
 import { lock, digest, run, readJson } from "./common.mjs";
 import { adaptPurgeEntry, adaptPurgeCore } from "./adapter.mjs";
 import { adaptAlpha2Core } from "./alpha2.mjs";
-import { adaptAlpha3Core } from "./alpha3.mjs";
+import { adaptAlpha3Core, adaptAlpha3Identity } from "./alpha3.mjs";
 
 /** 固定归档经摘要与成员检查后解包，不接受浮动分支或归档中的链接。 */
 export async function preparePurge(cache) {
@@ -76,6 +76,12 @@ export async function preparePurge(cache) {
       ),
     );
     run(process.execPath, ["--check", core]);
+    const identity = join(source, "lib/identity.js");
+    writeFileSync(
+      identity,
+      adaptAlpha3Identity(readFileSync(identity, "utf8")),
+    );
+    run(process.execPath, ["--check", identity]);
     renameSync(source, directory);
     return directory;
   } finally {
