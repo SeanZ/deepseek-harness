@@ -24,7 +24,9 @@ async function services(runtime, directory) {
       )
     );
   const { Context } = await load("cordis");
-  const { default: Persistence } = await load("dsh-session-persistence-jsonl");
+  const module = await load("dsh-session-persistence-jsonl");
+  // 旧读取器导出插件类，alpha.3 起导出插件命名空间。
+  const Persistence = module.default ?? module;
   const api = await load("dsh-session");
   const ctx = new Context();
   await ctx.plugin(Persistence, { root: directory, compression: "zstd" });

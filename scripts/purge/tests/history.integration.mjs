@@ -25,7 +25,7 @@ const load = (name) =>
     )
   );
 const { Context } = await load("cordis");
-const { default: Persistence } = await load("dsh-session-persistence-jsonl");
+const Persistence = await load("dsh-session-persistence-jsonl");
 const { Session } = await load("dsh-session");
 
 for (const version of [3, 4]) {

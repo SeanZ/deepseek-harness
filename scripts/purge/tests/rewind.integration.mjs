@@ -15,9 +15,7 @@ const { Session } = await load("@deepseek-ai/dsh-session");
 const { createAssistantMessage, createSystemMessage, createUserMessage } =
   await load("@deepseek-ai/dsh-llm");
 const { Context } = await load("@deepseek-ai/cordis");
-const { default: Persistence } = await load(
-  "@deepseek-ai/dsh-session-persistence-jsonl",
-);
+const Persistence = await load("@deepseek-ai/dsh-session-persistence-jsonl");
 const { planRewind, applyRewind, wrapSessionDeriveMessages } = await import(
   pathToFileURL(join(runtime, "node_modules/dsh-purge/lib/rewind.js"))
 );

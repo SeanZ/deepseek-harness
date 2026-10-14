@@ -4,11 +4,13 @@
 
 purge 唯一构建下载源为 SeanZ/dsh-purge，固定提交和 SHA-256，不配置原作者地址为备用源。主部署线固定 1.1.66 / 09bac57f2cfbf22dbc2e896063de161ac0e6b81d，归档摘要见 scripts/purge/lock.json。fork master 与 v1.1.66 标签已经回读一致。旧宿主的 compat/dsh-015rc2-tavern 继续保留，不随主线升级。
 
-deploy/purge 在原分支历史上维护固定版本的 purge 集成、制品构建和脱敏验收。推送只到 origin/deploy/purge；upstream 只读取固定 tag。当前官方基线为 dsh-v0.2.1-alpha.2，packages、apps、vendor、native 必须与 scripts/purge/lock.json 选定的官方提交一致。禁止恢复私有 request/injections 核心实现或自有 creative 业务提示。
+deploy/purge 在原分支历史上维护固定版本的 purge 集成、制品构建和脱敏验收。推送只到 origin/deploy/purge；upstream 只读取固定 tag。当前官方基线为 dsh-v0.2.1-alpha.3，packages、apps、vendor、native 必须与 scripts/purge/lock.json 选定的官方提交一致。禁止恢复私有 request/injections 核心实现或自有 creative 业务提示。
 
 purge 原样提供业务内容与 UI，集成适配限于启动写入控制与官方版本的补丁匹配。autoApplyOnStart=false 时跳过启动、延迟自愈、客户端、备份恢复和桌面清理写入；autoUpdateOnStart=false 禁止自动更新。封存部署从 ALL_PATCHES 排除 OVERLAY_RESTORE_FROM_BAK：该规则在配置加载前恢复宿主文件，无法受插件启动开关控制，缺失 overlay 必须按官方行为报错。手动应用/更新仍属于独立运行时修改，不能据此继续声称制品未变化。
 
 REWIND_DROP_SENT_ON_APPEND 同时适配官方条件清空的匹配串和替换串，保留 purge 的回退行为。COMPLETE_PROMPT_KEEP_INJECT 增加 alpha.2 的 required context 匹配，在保留 purge 和工作区说明的同时，保留官方对必需运行上下文的筛选。真实 SystemPrompt、CLI/SDK 和回退持久化测试覆盖这些语义。
+
+alpha.3 把 Web 提示移到 harness-dev-context。规则 32 同时处理 web-app 的 URL 描述和新模块的当前提示，规则 53 只处理新模块当前模板串；旧日志识别使用的 LEGACY_WEB_SURFACE 常量保持原字节。真实 SystemPrompt 与投影注册器验证新提示、运行时 URL 和旧会话原提示同时保留。
 
 所有规则及缺失/不适用状态由锁文件逐条固定，比较编号、名称、顺序和状态。1.1.66 的规则编号 77 替代旧版重复的 74。未安装的 Liangshen、unrestricted 与官方可选 Hooks 包按缺失记录；MINIMAL_OFFICIAL_TOOLSET 只撤销旧工具扩展，干净的官方 minimal 无需命中。不能为提升计数安装无关插件或恢复已退役的扩展。
 
@@ -23,6 +25,8 @@ purge 在系统临时目录的独立运行时应用，不能位于名字包含 d
 purge:build 包含单元、压缩历史、CLI/SDK 业务与 Web profile 验收。测试使用合成身份、文本和回环模型端点；模拟请求验证标准工具、purge 内容、重启恢复、客户端加载和延迟启动后无文件漂移。build:official 已通过、核心输入未变且客户端构建记录的 DSH_CLIENT_COMMIT_HASH 匹配当前提交时才可使用 --skip-build；即使仅提交文档，提交戳变化后也需重新构建。失败现场保留在输出提示的临时目录，禁止自动发布失败产物。
 
 新增 MJS 需逐个 node --check，并使用现有 Prettier 格式检查及 node --test；不新增测试框架。仓库文档与门禁改动仍需 doc-sync、lint 和相应 Vitest；推送保留原有 hook。
+
+alpha.3 的 JSONL 持久化后端以插件命名空间挂载，不再取 default 插件类；当前制品测试使用命名空间，一次性旧读取器工具按实际旧版本兼容两种导出。新增 job/registered、job/settled 属于 required 事件，旧版本不能读取含这些事件的新会话。回退必须保全升级后的原始数据，再恢复一致快照，不能将旧运行时直接套到新 home。
 
 ## 发布与验收范围
 
