@@ -58,6 +58,11 @@ describe('pi-ai gateway compatibility declarations', () => {
       .toThrow(/which is not configurable here/)
   })
 
+  it('withholds catalog-owned Responses effort transitions', () => {
+    expect(() => resolved({ supportsMidConvoEffort: true }, 'openai-responses'))
+      .toThrow(/which is not configurable here/)
+  })
+
   it('withholds Mistral conversation capabilities', () => {
     expect(() => resolveProfiles({
       mistral: { compat: { supportsMidConvoSystemMessages: true } as never },
