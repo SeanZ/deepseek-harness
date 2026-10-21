@@ -227,6 +227,8 @@ export interface Config {
 ```ts config-catalog
 /** Session Controller deployment policy. */
 export interface Config {
+  /** 用户消息沿用原生 steer 语义，或统一排到下一轮。 */
+  readonly userMessageMode?: 'native' | 'followup'
   /** Override platform desktop-opener detection. */
   readonly nativeOpen?: boolean
   /** Positive integral milliseconds of list work before yielding between complete rows. */
