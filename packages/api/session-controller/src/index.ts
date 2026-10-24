@@ -92,6 +92,8 @@ function addressedSession(request: { readonly address: SessionAddress }): Sessio
 
 /** Session Controller deployment policy. */
 export interface Config {
+  /** 用户消息沿用原生 steer 语义，或统一排到下一轮。 */
+  readonly userMessageMode?: 'native' | 'followup'
   /** Override platform desktop-opener detection. */
   readonly nativeOpen?: boolean
   /** Positive integral milliseconds of list work before yielding between complete rows. */
@@ -99,7 +101,10 @@ export interface Config {
 }
 
 /** Deployment policy after schema defaults have been applied. */
-type ResolvedConfig = Config & { readonly listWorkSliceMs: number }
+type ResolvedConfig = Config & {
+  readonly listWorkSliceMs: number
+  readonly userMessageMode: 'native' | 'followup'
+}
 
 /** Host integrations replaceable by direct unit tests. */
 export interface SessionControllerInternals {
@@ -134,6 +139,7 @@ export class SessionController extends TypertRemoteService {
 
   static Config: z<Config, ResolvedConfig> = z.object({
     nativeOpen: z.boolean(),
+    userMessageMode: z.union(['native', 'followup']).default('native'),
     listWorkSliceMs: z.natural().min(1).default(16),
   })
 
@@ -160,7 +166,7 @@ export class SessionController extends TypertRemoteService {
     const resolved = SessionController.Config(config)
     installModelSelectionProjection(ctx)
     this.agents = new ApiSessionAgentController(ctx)
-    this.commands = new SessionCommandController(ctx, this.agents, process.cwd())
+    this.commands = new SessionCommandController(ctx, this.agents, process.cwd(), resolved.userMessageMode)
     ctx.effect(() => ctx.fileUploads.registerAgentResolver(async (sessionId) => {
       const result = await this.agents.resolveAgent(sessionId)
       if ('error' in result) throw result.error
