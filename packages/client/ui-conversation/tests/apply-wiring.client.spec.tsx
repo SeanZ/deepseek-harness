@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   SlotTestRuntime, stubConfigForm, usePinnedBrowserLanguages,
 } from '@deepseek-ai/dsh-client-test-runtime'
@@ -44,6 +44,37 @@ function entry(
 }
 
 describe('target-neutral Conversation apply wiring', () => {
+  it.each(['released', 'replaced', 'live'] as const)('refreshes views only for the current Provider while the old binding is %s', async (state) => {
+    const b = await bench()
+    onTestFinished(() => b.runtime.dispose())
+    b.runtime.slots.register({ name: 'conversation.view', id: 'chat', label: 'Chat' }, (() => null) as never)
+    await b.runtime.sessions.add({ id: SID })
+    const first = b.runtime.sessions.retain(SID)
+    onTestFinished(() => { first.release() })
+    b.runtime.ctx.uiSession.adapter.bindingSource(first).getSnapshot()
+    const original = first.binding
+    let current = first
+    if (state !== 'live') {
+      first.release()
+      expect(b.runtime.ctx.sessions.binding(SID)).toBeUndefined()
+      if (state === 'replaced') {
+        current = b.runtime.sessions.retain(SID)
+        onTestFinished(() => { current.release() })
+        expect(current.binding).not.toBe(original)
+        b.runtime.ctx.uiSession.adapter.bindingSource(current).getSnapshot()
+      }
+    }
+    const resolve = vi.spyOn(b.runtime.ctx.uiConversation, 'binding')
+    onTestFinished(() => { resolve.mockRestore() })
+    // 在同一轮事件中刷新，保留 Controller 失效与 Provider 清理之间的真实窗口。
+    b.developerTools.set(false)
+    if (state === 'released') {
+      expect(resolve).not.toHaveBeenCalled()
+    } else {
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(SID)
+    }
+  })
+
   it('hands every Session header the same in-memory View pins without restoring saved choices', async () => {
     localStorage.setItem('dsh.slot.manual-order.conversation.view.v1', JSON.stringify({ unpinned: ['trajectory'] }))
     try {
