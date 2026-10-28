@@ -1,0 +1,46 @@
+name: Build fixed DSH component
+on:
+  workflow_dispatch:
+  push:
+    branches: ["release/components-022a2-*"]
+permissions:
+  contents: read
+concurrency:
+  group: dsh-component-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  component:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "24.22.1"
+      - uses: pnpm/action-setup@b307475762933b98ed359c036b0e51f26b63b74b
+        with:
+          version: "11.28.5"
+          run_install: false
+      - name: Build fixed source once
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build --profile official --scope artifacts
+          node --test scripts/distribution/*.test.mjs
+          pnpm run release:pack --family dsh --out dist/npm-dsh --concurrency 8
+          pnpm run release:pack --family vendor --out dist/npm-vendor --concurrency 8
+      - name: Export original packages
+        env:
+          COMPONENT_REPOSITORY: ${{ github.repository }}
+        run: node scripts/distribution/export-component.mjs --repository "$COMPONENT_REPOSITORY" --out "$RUNNER_TEMP/component"
+      - name: Save draft Release for composition verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="dsh-component-$(node -p 'require("./package.json").version')-${GITHUB_SHA:0:12}"
+          gh release create "$tag" "$RUNNER_TEMP/component/"* --draft --prerelease --target "$GITHUB_SHA" --title "$tag" --notes "Fixed Linux x64 component. Original npm packages and SHA-256 manifest; installation and composition acceptance tracked separately. No npm publication."
