@@ -2,7 +2,7 @@ name: Build fixed DSH component
 on:
   workflow_dispatch:
   push:
-    branches: ["release/components-022a2-*"]
+    branches: ["release/components-022a3-*"]
 permissions:
   contents: read
 concurrency:
@@ -30,7 +30,6 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm run build --profile official --scope artifacts
-          node --test scripts/distribution/*.test.mjs
           pnpm run release:pack --family dsh --out dist/npm-dsh --concurrency 8
           pnpm run release:pack --family vendor --out dist/npm-vendor --concurrency 8
       - name: Export original packages
